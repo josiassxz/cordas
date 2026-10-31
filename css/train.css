@@ -72,3 +72,13 @@ input.pr-bpmr[type=range]{width:130px;flex:none}
 .pr:fullscreen{background:var(--bg,#0b0d12);padding:18px 22px;overflow:auto;gap:12px}
 .pr:fullscreen .pr-hw.lane,.pr:fullscreen .pr-hw{height:calc(100vh - 250px);max-height:none;min-height:320px}
 .pr:fullscreen .pr-notice,.pr:fullscreen .pr-needle{display:none}
+
+/* a timeline cobre toda a largura útil: do fim do menu lateral até a borda da janela.
+   A tela com timeline perde o padding lateral e o devolve à página; a pista cancela esse padding com margem negativa. */
+.view:has(.pr-hw){padding-left:0;padding-right:0}
+.view:has(.pr-hw) .page{max-width:none;padding-left:var(--vp);padding-right:var(--vp)}
+.view .pr-hw,.view .pr-hw.lane{width:auto;margin-left:calc(-1 * var(--vp));margin-right:calc(-1 * var(--vp));border-radius:0;border-left:0;border-right:0}
+.view .pr > :not(.pr-hw){width:100%;max-width:1180px;margin-left:auto;margin-right:auto}
+.view .rt-metro .pr-hw,.view .tabs-detail .pr-hw{width:auto;margin-left:0;margin-right:0;border-radius:var(--r-lg);border:1px solid var(--hair)}
+#syncDlg .pr-hw,.pr:fullscreen .pr-hw{margin-left:0 !important;margin-right:0 !important}
+.pr:fullscreen > :not(.pr-hw){max-width:none}

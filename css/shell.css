@@ -23,7 +23,7 @@
 .status[data-s=demo] .dot{background:var(--expected)}
 .status[data-s=connecting] .dot{background:var(--warn);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
-.view{flex:1;min-height:0;overflow:auto;padding:12px 32px 32px;outline:0}
+.view{--vp:32px;flex:1;min-height:0;overflow:auto;padding:12px var(--vp) 32px;outline:0}
 .page{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-5)}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
 
@@ -41,5 +41,5 @@
   .side{grid-row:3;grid-column:1;flex-direction:row;padding:4px;border-right:0;border-top:1px solid var(--hair);gap:0}
   .brand,.side-foot,.nav .sep{display:none}.nav{flex-direction:row;width:100%;justify-content:space-around;overflow-x:auto}
   .nav button{flex-direction:column;gap:2px;font-size:10.5px;padding:6px 8px}
-  .stage{grid-column:1;padding:8px 12px}.top,.view{padding-left:16px;padding-right:16px}
+  .stage{grid-column:1;padding:8px 12px}.top,.view{padding-left:16px;padding-right:16px}.view{--vp:16px}
 }
