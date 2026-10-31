@@ -72,3 +72,19 @@ test('reiniciar volta para a contagem', () => {
   assert.ok(Math.abs(tr.position() - -4) < 1e-9);
   tr.stop();
 });
+
+test('mudar o BPM cancela os cliques já agendados e recalcula o próximo no novo andamento', () => {
+  const c = { t: 10 }, scheduled = [];
+  const audio = { context: { currentTime: 10, createOscillator: () => ({ frequency: {}, connect() { return { connect() {} }; }, start() {}, stop() { this.stopped = true; }, disconnect() {} }), createGain: () => ({ gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {}, value: 1 }, connect() { return this; }, disconnect() {} }) }, master: { }, instrumentBus: {} };
+  const tr = new Transport(audio, { bpm: 120, beatsPerBar: 4, subdivision: 1, clock: () => c.t });
+  tr.makeBus = function () {}; tr.out = { connect() {} };
+  tr.blip = function (time) { scheduled.push({ time, o: { stop() { this.dead = true; }, disconnect() {} }, g: { disconnect() {} } }); this.sched.push(scheduled.at(-1)); };
+  tr.start({ countInBeats: 0 });
+  c.t = 10.3; tr.pump();                                    // 120 BPM: cliques em 10.12, 10.62...
+  const before = tr.nextTick;
+  tr.setBpm(60);                                            // desacelera: o clique agendado e ainda não tocado é cancelado
+  assert.ok(scheduled.filter((e) => e.time > 10.3).every((e) => e.o.dead), 'cliques futuros cancelados');
+  assert.ok(tr.nextTick >= tr.position(), 'próximo clique parte da posição atual');
+  assert.ok(tr.nextTick <= before + 1, 'não pula batidas');
+  tr.stop();
+});

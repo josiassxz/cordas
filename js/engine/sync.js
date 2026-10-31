@@ -24,7 +24,8 @@ export function openSync(app) {
   const $ = (s) => dlg.querySelector(s), guitar = app.guitar;
   let bpm = 80, tr = null, deltas = [], lane = null, applyMs = 0, done = false;
 
-  const view = () => ({ score: { ...score, bpm }, pos: tr ? tr.position() : -0.5, results: new Map(), passes: Infinity, state: tr?.state === 'paused' ? 'paused' : 'running' });
+  const outLat = () => { const c = app.audio.context; return ((c?.outputLatency || 0) + (c?.baseLatency || 0)) * bpm / 60; };
+  const view = () => ({ score: { ...score, bpm }, pos: tr ? tr.position() - outLat() : -0.5, results: new Map(), passes: Infinity, state: tr?.state === 'paused' ? 'paused' : 'running' });
   lane = new Lane($('canvas'), view); lane.start();
 
   function stop() { tr?.stop(); tr = null; guitar.removeEventListener('strumstart', onStrum); }
@@ -47,7 +48,7 @@ export function openSync(app) {
     stop();
     const msg = $('#syMsg');
     if (m == null) { msg.innerHTML = 'Poucos acertos medidos. Tente de novo, palhetando junto de cada clique.'; return; }
-    const cur = app.store.get('settings.latency', 0), want = Math.max(0, Math.min(250, Math.round(cur + m)));
+    const cur = app.store.get('settings.latency', 0), want = Math.max(0, Math.min(400, Math.round(cur + m)));
     applyMs = want;
     if (m < -15) msg.innerHTML = `Você tocou em média <b>${Math.abs(Math.round(m))} ms adiantado</b> em relação ao clique. A compensação só corrige atraso, então não há o que ajustar: espere o clique.`;
     else if (Math.abs(m) < 15) msg.innerHTML = `Seu tempo está <b>muito bem sincronizado</b> (${Math.round(m)} ms). Nada a ajustar.`;
@@ -65,7 +66,7 @@ export function openSync(app) {
   }
   $('#syGo').addEventListener('click', go);
   $('#syBpm').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (!b) return; bpm = +b.dataset.b; dlg.querySelectorAll('[data-b]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); });
-  $('#syApply').addEventListener('click', () => { app.store.set('settings.latency', applyMs); app.toast(`Compensação de latência: ${applyMs} ms`); $('#syApply').hidden = true; });
+  $('#syApply').addEventListener('click', () => { app.store.set('settings.latency', applyMs); app.store.set('settings.calibratedAt', Date.now()); app.toast(`Compensação de latência: ${applyMs} ms`); $('#syApply').hidden = true; });
   const close = () => { stop(); lane.stop(); dlg.close(); dlg.remove(); };
   $('#syClose').addEventListener('click', close);
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });

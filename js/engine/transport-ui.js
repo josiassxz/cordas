@@ -30,7 +30,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
         <label class="chip pr-toggle" title="Conferir se as casas apertadas são as do acorde pedido (sensores de casa)"><input type="checkbox" data-a="vneck"> Montagem no braço</label>
         <select data-a="vsound" aria-label="Som que chega"><option value="off">Não conferir o som</option><option value="chord">Som: pelo acorde</option><option value="strings">Som: corda a corda</option></select></div>
       <div class="pr-pop-row"><span class="h3">Tolerância de tempo <small class="dim">(largura do bloco)</small></span><select data-a="tol" aria-label="Tolerância de tempo"><option value="strict">Rigorosa</option><option value="normal">Normal</option><option value="wide">Ampla</option></select></div>
-      <div class="pr-pop-row"><span class="h3">Timing</span><button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Sincronizar com a guitarra…</button></div>
+      <div class="pr-pop-row"><span class="h3">Timing</span><button class="btn sm" data-a="calibrate" title="Timing, notas das cordas e casas">Calibrar a guitarra…</button> <button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Só o timing…</button></div>
     </div>
   </div>`;
   const $ = (s) => host.querySelector(s), play = $('.play');
@@ -63,6 +63,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
     else if (b.dataset.a === 'restart') run.restart();
     else if (b.dataset.a === 'stop') run.stop();
     else if (b.dataset.a === 'sync') { $('.pr-pop').hidden = true; $('.pr-gear').setAttribute('aria-expanded', 'false'); host.dispatchEvent(new CustomEvent('corda:sync', { bubbles: true })); }
+    else if (b.dataset.a === 'calibrate') { $('.pr-pop').hidden = true; $('.pr-gear').setAttribute('aria-expanded', 'false'); host.dispatchEvent(new CustomEvent('corda:calibrate', { bubbles: true })); }
     else if (b.dataset.a === 'gear') { const pop = $('.pr-pop'); pop.hidden = !pop.hidden; b.setAttribute('aria-expanded', String(!pop.hidden)); }
     else if (b.dataset.a === 'bpm-') run.setBpm(run.bpm - 5);
     else if (b.dataset.a === 'bpm+') run.setBpm(run.bpm + 5);

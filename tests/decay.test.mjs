@@ -29,3 +29,12 @@ test('CC 49 aperta e CC 50 solta a casa (ordem das cordas invertida)', () => {
   assert.equal(g.pressed.size, 0);
   assert.deepEqual(ev, [['p', 1, 3], ['u', 1]]);
 });
+
+test('calibração de casas: fretOffset soma ao número do sensor, no aperto e na soltura', () => {
+  const g = new Guitar(); g.fretOffset = -1;
+  const ev = []; g.addEventListener('press', (e) => ev.push(['p', e.detail.string, e.detail.fret])); g.addEventListener('unpress', (e) => ev.push(['u', e.detail.string]));
+  g.handle({ type: 'cc', ch: 4, a: 49, b: 6 }, 0);            // sensor manda 6 -> casa 5
+  assert.deepEqual(ev, [['p', 1, 5]]);
+  g.handle({ type: 'cc', ch: 4, a: 50, b: 6 }, 0);            // soltou a casa 6 do sensor = casa 5
+  assert.equal(g.pressed.size, 0);
+});

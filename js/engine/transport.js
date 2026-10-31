@@ -22,6 +22,7 @@ export class Transport extends EventTarget {
     this.subClick = !!o.subClick;          // clique suave nas subdivisões
     this.volume = o.volume ?? 1;
     this.pos0 = 0; this.t0 = 0; this.nextTick = 0; this.timer = null; this.out = null; this.guideOut = null;
+    this.sched = [];   // cliques já agendados (cancelável quando o andamento muda)
   }
 
   get effectiveBpm() { return this.bpm * this.speed; }
@@ -74,14 +75,15 @@ export class Transport extends EventTarget {
   // Muda compasso/subdivisão sem parar: o próximo clique já segue a nova grade.
   setMeter({ beats, sub } = {}) {
     if (beats) this.beatsPerBar = beats;
-    if (sub) { this.subdivision = sub; this.nextTick = Math.ceil(this.nextTick * sub - 1e-9) / sub; }
+    if (sub) this.subdivision = sub;
+    if (this.running) { this.cancelFuture(); this.nextTick = Math.ceil(this.position() * this.subdivision + 1e-4) / this.subdivision; }
     this.dispatchEvent(new CustomEvent('tempo', { detail: { bpm: this.bpm, speed: this.speed } }));
   }
   // Muda tempo sem perder a posição.
   rebase(fn) {
     const wasRunning = this.running, p = this.position();
     fn();
-    if (wasRunning) { this.pos0 = p; this.t0 = this.now(); }
+    if (wasRunning) { this.pos0 = p; this.t0 = this.now(); this.cancelFuture(); this.nextTick = Math.ceil(p * this.subdivision + 1e-4) / this.subdivision; }
     this.dispatchEvent(new CustomEvent('tempo', { detail: { bpm: this.bpm, speed: this.speed } }));
   }
   setBpm(v) { this.rebase(() => { this.bpm = Math.max(20, Math.min(300, v)); }); }
@@ -134,5 +136,12 @@ export class Transport extends EventTarget {
     g.gain.exponentialRampToValueAtTime(0.0001, time + len);
     o.connect(g).connect(this.out);
     o.start(time); o.stop(time + len + 0.02);
+    const now = ctx.currentTime; this.sched = this.sched.filter((e) => e.time > now - 0.2); this.sched.push({ time, o, g });
+  }
+  // Cancela os cliques que ainda NÃO soaram (usado ao mudar BPM/velocidade/compasso): senão eles tocariam no andamento antigo.
+  cancelFuture() {
+    const now = this.audio?.context?.currentTime ?? 0;
+    for (const e of this.sched) if (e.time > now) { try { e.o.stop(); e.o.disconnect(); e.g.disconnect(); } catch { /* já terminou */ } }
+    this.sched = this.sched.filter((e) => e.time <= now);
   }
 }

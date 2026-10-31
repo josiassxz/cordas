@@ -82,3 +82,11 @@ input.pr-bpmr[type=range]{width:130px;flex:none}
 .view .rt-metro .pr-hw,.view .tabs-detail .pr-hw{width:auto;margin-left:0;margin-right:0;border-radius:var(--r-lg);border:1px solid var(--hair)}
 #syncDlg .pr-hw,.pr:fullscreen .pr-hw{margin-left:0 !important;margin-right:0 !important}
 .pr:fullscreen > :not(.pr-hw){max-width:none}
+
+.pr-calib{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-radius:var(--r);background:rgba(245,165,36,.1);border:1px solid rgba(245,165,36,.4);color:var(--tx);font-size:13px}.pr-calib[hidden]{display:none}.pr-calib span{flex:1;min-width:240px}
+#calDlg{width:min(640px,94vw);max-height:92vh;overflow:auto}
+.cal-step{border:1px solid var(--hair);border-radius:var(--r-lg);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.cal-h{display:flex;justify-content:space-between;align-items:center}.cal-state{font-size:12px;color:var(--tx-3)}
+.cal-strings{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.cal-str{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;background:var(--raised);border:1px solid var(--hair)}
+.cal-str small{font-size:10px;color:var(--tx-3)}.cal-str b{font:700 13px var(--font-display)}.cal-str.ok{border-color:var(--ok);background:rgba(61,220,151,.1)}
+.cal-fret{padding:12px;border-radius:10px;background:var(--raised);text-align:center}

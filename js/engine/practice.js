@@ -47,6 +47,7 @@ function mountUI(app, run, opts) {
       <div class="pr-state muted" aria-live="polite"></div>
     </div>
     ${notes.length ? `<div class="pr-notice"><span class="badge guide">guia</span><div>${notes.map(esc).join(' ')}</div></div>` : ''}
+    <div class="pr-calib" hidden><span>Calibre a guitarra antes de começar para o acerto ficar o mais preciso possível (timing, notas e casas).</span><button class="btn sm primary" data-calib>Calibrar agora</button><button class="btn ghost sm" data-calib-skip>Agora não</button></div>
     <div class="pr-bar"></div>
     <div class="pr-hw"><canvas aria-label="Pista de notas e batidas"></canvas><button class="pr-full" data-full aria-label="Timeline em tela cheia (F)" title="Timeline em tela cheia (F)">⛶</button><div class="pr-flash" aria-live="polite"></div></div>
     <div class="pr-needle" aria-hidden="true"><span class="lbl l">cedo</span><span class="lbl r">tarde</span><div class="track"></div><div class="mid"></div><div class="needle"></div></div>
@@ -72,8 +73,10 @@ function mountUI(app, run, opts) {
     const n = counts.perfect + counts.good + counts.ok + counts.miss;
     $('[data-s=acc]').textContent = n ? `${Math.round((counts.perfect + counts.good * 0.75 + counts.ok * 0.45) / n * 100)}%` : '–';
   };
+  const calib = $('.pr-calib');
+  const paintCalib = () => { calib.hidden = !(run.state === 'idle' && app.guitar.status === 'connected' && !app.isCalibrated?.() && !sessionStorage.getItem('corda.calibSkip')); };
   const label = { idle: 'Pronto — aperte Iniciar (ou P)', countin: 'Prepare-se…', running: 'Tocando', paused: 'Pausado', finished: 'Concluído' };
-  const paintState = () => { $('.pr-state').textContent = label[run.state] || ''; if (run.state === 'countin' || run.state === 'running') summary.hidden = true; };
+  const paintState = () => { paintCalib(); $('.pr-state').textContent = label[run.state] || ''; if (run.state === 'countin' || run.state === 'running') summary.hidden = true; };
 
   function syncStage() {
     if (!app.stage || performance.now() < holdUntil) return;
@@ -135,6 +138,8 @@ function mountUI(app, run, opts) {
   const onFullKey = (e) => { if (!host.isConnected || e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return; if (e.key === 'f' || e.key === 'F') toggleFull(); };
   document.addEventListener('keydown', onFullKey);
   host.addEventListener('click', (e) => {
+    if (e.target.closest('[data-calib]')) { document.dispatchEvent(new CustomEvent('corda:calibrate')); return; }
+    if (e.target.closest('[data-calib-skip]')) { sessionStorage.setItem('corda.calibSkip', '1'); paintCalib(); return; }
     if (e.target.closest('[data-full]')) { toggleFull(); return; }
     if (e.target.closest('[data-close]')) { opts.onClose?.(); return; }
     if (e.target.closest('[data-again]')) { Object.keys(counts).forEach((k) => (counts[k] = 0)); paintStats(); needle.style.opacity = 0; run.restart(); return; }
