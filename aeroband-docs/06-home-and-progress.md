@@ -192,7 +192,7 @@ A step is a *specification* (technique + levels + criterion), not a fixed exerci
 ## E. Ideas for the native AeroBand app
 
 1. **One-screen "what now?" Home.** Greeting + goal ring + a single recommended action is enough; the weakest-technique-first rule gives a personalised feel without any account or cloud.
-2. **Derived progress.** Store only sessions; compute path steps, streaks, mastery and trends on the fly. It removes a whole class of "progress got out of sync" bugs and makes rule changes retroactive.
+2. **Derived progress.** Store only sessions; compute path steps, streaks, mastery and trends on the fly. It keeps the numbers always consistent with the history and makes rule changes retroactive.
 3. **Negative-is-early timing chart.** A signed mean timing error (in ms) is more instructive than a single score; players quickly learn if they rush or drag.
 4. **Effective BPM** (written BPM × speed) as the key progress axis for speed building, with accuracy shown next to it so players do not chase tempo at the cost of cleanliness.
 5. **Daily routine generator** from weak spots + the next path step, with short fixed-length steps (3 min); it turns "I don't know what to practise" into one tap.

@@ -99,7 +99,7 @@ One line per event, newest on top, kept to the last 120 lines on screen (2000 in
 | `CC 49 = 3  (canal 5)` | A control change with its value and channel (49 = pressed fret 3, 50 = released, 123 = all notes off) |
 | `PALHETADA ↓ (para baixo) — ordem das cordas: 1 2 3 4 5 6 — 6 cordas` | End of a strum, direction (↓ / ↑ / "direção não detectada") and the order the strings arrived in |
 
-Buttons: **Limpar** (Clear) and **Exportar captura** (Export capture, saves the log as a local text file after the user clicks it; nothing is sent anywhere).
+Buttons: **Limpar** (Clear) and **Exportar captura** (Export capture, downloads the log as a local JSON file when the user clicks it; nothing is sent anywhere).
 
 ### 3.2 Tuning calibration ("Calibração de afinação")
 The player strums the six **open** strings. The lab compares each pitch to E-A-D-G-B-E and shows the difference in semitones per string (the *Δ* column). **Medir última palhetada** reads the last strum; **Aplicar desvio** (enabled when all strings agree) stores a single global offset used **only** for note validation. It was added after the one-semitone-low observation; frets drawn are never offset.

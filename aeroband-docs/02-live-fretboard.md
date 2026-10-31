@@ -22,7 +22,7 @@ It deliberately shows only what the instrument really reported (or what is deriv
 
 ![Chord library with the live fretboard docked at the bottom, showing sounding notes and two pressed frets](images/02-fretboard-live-strum.png)
 
-*Screenshot 02 (**simulated** strum plus two pressed frets while the **Acordes → Biblioteca** screen shows Em). **Header of the dock:** the green "AO VIEW"-style badge (**"ao vivo"**, live), the chord name guessed from what is sounding **right now** ("G6") and the list of those notes ("G3 B3 E4"). **Board:** the three highest strings still show orange dots with the note name (open G, B and E — they are still ringing); the low strings have already faded; the **E** on the D string and the **B** on the A string at fret 2 are the **pressed-fret marks** (orange, note name inside) coming from CC 49. The readout names a G6 because only three strings are still counted as sounding at the moment of capture.*
+*Screenshot 02 (**simulated** strum plus two pressed frets while the **Acordes → Biblioteca** screen shows Em). **Header of the dock:** the green badge **"ao vivo"** (live), the chord name guessed from what is sounding **right now** ("G6") and the list of those notes ("G3 B3 E4"). **Board:** the three highest strings still show orange dots with the note name (open G, B and E — they are still ringing); the low strings have already faded; the **E** on the D string and the **B** on the A string at fret 2 are the **pressed-fret marks** (orange, note name inside) coming from CC 49. The readout names a G6 because only three strings are still counted as sounding at the moment of capture.*
 
 ### 2.1 Anatomy of the dock
 

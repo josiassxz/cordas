@@ -66,17 +66,19 @@ Learners start with 1+2; as they improve they turn on 3, then 4. The player (not
 
 We put the "now" line about 30 % from the left (adjustable: little / medium / a lot) and keep judged blocks at ≥ 50 % opacity until they reach the left edge. Learners can see their last four or five strums, which is where patterns of "always late on the up-stroke" become obvious. Our first version put the line near the left edge and let judged blocks fade within a beat; the author found it hard to see which strums had been right, which is why the line moved and the fade was slowed.
 
-## 5. Treat a strum as an interval
+## 5. Grade a strum as an interval
 
-**Observation (verified).** On the AG01 the six notes of one strum arrive **one after another**, 20–210 ms apart, taking **0.33–0.66 s** in total in our captures. A grader that waits ≤ 0.45 s (or a fixed fraction of the beat) for all strings will drop the last strings of slow strums and report "wrong string" or a half-credit strum.
+**Observation (verified).** On the AG01 the six notes of one strum arrive **one after another**, 20–210 ms apart, taking **0.33–0.66 s** in total in our captures. A strum is therefore naturally an *interval* with a start and an end, not a single instant.
 
-**What worked.**
-- Group the strings of one strum in a window from the first note up to **100 % of the time until the next expected strum, clamped to 330–900 ms**.
-- Close a strum cluster after **260 ms of silence** (not 140 ms).
-- Give the strum already in progress priority for the strings it is still missing.
-- **The same string sounding again means a new strum.**
+**How Corda grades it.**
+- The **first string's** arrival is the strum's time and decides the timing grade.
+- The remaining strings are gathered into the same strum for as long as it continues: up to the next expected strum, clamped to **330–900 ms** from the first note.
+- A strum cluster closes after **260 ms of silence** between strings.
+- The strum already in progress has priority for the strings it is still missing.
+- **The same string sounding again means a new strum**, which keeps two fast strums apart.
+- Verdicts that need the whole strum (direction, chord by sound) are produced when the strum has finished arriving.
 
-Verified with a test that replays the measured string spacings at 60–120 BPM in all validation modes. If the native app already does something like this, great; if it currently assumes an instantaneous strum, it is worth checking.
+This is covered by a test that replays the measured string spacings at 60–120 BPM in every validation mode and checks that all six strings are recognised in each strum.
 
 ## 6. Real BLE-MIDI timestamps (firmware)
 
@@ -98,7 +100,7 @@ Recommendation: do this once in onboarding and offer it again whenever the audio
 
 ## 9. One global audio clock
 
-Early on, pausing an exercise left metronome clicks audible in some paths. The fix that held: a **single rule** for all clocks — *pause* pauses every clock; *start / resume / restart* pauses every other clock; *stop* ends them all — plus a guard that re-pauses any stray clock while the exercise is paused and self-heals the exercise if its clock is lost. Restart also **continues the metronome pulse** (the first new click lands one beat after the last old click), which removed the "two metronomes out of phase" sound. We think any app with more than one audio source benefits from the same discipline.
+Corda uses a **single rule** for all clocks (metronome and exercise): *pause* pauses every clock; *start / resume / restart* pauses every other clock; *stop* ends them all. While an exercise is paused, any other running clock is paused again, and if an exercise's own clock is ever lost it is re-created at the last known position, so the exercise cannot end up playing on screen but frozen inside. Restart also **continues the metronome pulse** (the first new click lands one beat after the last old click), so the pulse never breaks. We think any app with more than one audio source benefits from the same discipline.
 
 ## 10. Visual drill authoring
 

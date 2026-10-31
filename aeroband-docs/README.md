@@ -1,7 +1,7 @@
 # Corda — a practice studio built on the AeroBand AG01
 ### Feature documentation and product insights for the AeroBand team
 
-> **Independent project, not affiliated with AeroBand.** Corda is a web app (HTML, CSS and JavaScript, no framework, no build step) written by an AG01 owner to explore what a *practice-first* experience could look like when it is fed by the data the AG01 already sends over Bluetooth MIDI. This folder documents every feature of the app (except the song-import / tablature section, which is out of scope here) with screenshots, the exact rules behind each behaviour, and concrete ideas that might be useful for the native app.
+> **Independent project, not affiliated with AeroBand.** Corda is a web app (HTML, CSS and JavaScript, no framework, no build step) written by an AG01 owner to explore what a *practice-first* experience could look like when it is fed by the data the AG01 already sends over Bluetooth MIDI. This folder documents every feature of the app (the song section is out of scope for this document) with screenshots, the exact rules behind each behaviour, and concrete ideas that might be useful for the native app.
 
 ## How to read this folder
 
