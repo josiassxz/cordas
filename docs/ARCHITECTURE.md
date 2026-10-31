@@ -138,6 +138,6 @@ Lógica musical em módulos puros (sem DOM) → testável com `node --test`. Tes
 
 ## 11. Verificação visual
 
-`SP=/private/tmp/claude-501/-Users-josiassiqueira-Desktop/0a73bc83-073b-4f7d-812b-905f46bbdb23/scratchpad; $SP/shot.sh <view> <saida.png> [largura] [altura]`
+Conferência visual: abra a tela no Chrome (ou use o Chrome sem tela com `--screenshot`) e compare com o desenho esperado.
 tira screenshot headless de `http://127.0.0.1:8731/#/<view>` (servidor já rodando; se não, `./serve.sh &`).
 Interação em teste: iframe + `body.dispatchEvent(new KeyboardEvent(...))` (ver histórico) ou `app.guitar.simulateStrum` via `window.corda`.
