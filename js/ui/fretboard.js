@@ -68,9 +68,9 @@ export class Fretboard {
       lab.textContent = STRING_LABELS[s];
       this.stringEls.push({ line, lab });
     }
+    this.layerPress = svg('g', { class: 'fb-pressed' }, this.root);   // sob esperado/ao vivo, para não cobri-los
     this.layerExpected = svg('g', { class: 'fb-expected' }, this.root);
     this.layerLive = svg('g', { class: 'fb-live' }, this.root);
-    this.layerPress = svg('g', { class: 'fb-pressed' }, this.root);
     this.layerFlash = svg('g', { class: 'fb-flash' }, this.root);
     this.layerOff = svg('g', { class: 'fb-offboard' }, this.root);   // notas fora do braço desenhado
     this.host.replaceChildren(this.root);
@@ -135,8 +135,10 @@ export class Fretboard {
   press(string, fret) {
     this.unpress(string);
     const g = svg('g', { class: 'fb-press', transform: `translate(${this.cellX(fret)} ${this.rowY(string)})` }, this.layerPress);
-    svg('circle', { r: 11 }, g);
-    svg('text', { 'text-anchor': 'middle', y: 4 }, g).textContent = fret;
+    svg('circle', { r: 12 }, g);
+    const note = this.tuning[string] + fret;
+    svg('text', { 'text-anchor': 'middle', y: 4 }, g).textContent = noteName(note).replace(/\d/, '');
+    g.append(Object.assign(svg('title'), { textContent: `Casa ${fret} pressionada (${noteName(note)})` }));
     this.pressEls ??= new Map(); this.pressEls.set(string, g);
   }
   unpress(string) {
