@@ -164,3 +164,14 @@ test('sem validar corda: qualquer corda no tempo certo acerta, e fora do tempo n
   const strict = new Evaluator(sc, { passes: 1 }); strict.noteOn({ string: 0, note: 40, beat: 0.02 }); strict.advance(10);
   assert.ok(strict.summary().miss >= 1, 'com validação, a corda errada perde');
 });
+
+test('sem validar corda: as outras cordas da mesma palhetada não viram "extra"; fora do tempo sim', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const sc = normalizeScore({ id: 't2', title: 't', bpm: 100, lengthBeats: 4, events: [{ beat: 0, strum: { dir: 'D', strings: [0, 1, 2, 3, 4, 5] } }] });
+  const ev = new Evaluator(sc, { checkStrings: false, passes: 1 });
+  const fb = [0, 1, 2, 3, 4, 5].map((s, i) => ev.noteOn({ string: s, note: 40 + s, beat: 0.01 + i * 0.04 })[0].type);
+  assert.deepEqual(fb, Array(6).fill('hit'));
+  assert.equal(ev.extras, 0, 'a palhetada inteira não gera extras');
+  assert.equal(ev.noteOn({ string: 2, note: 50, beat: 2.5 })[0].type, 'extra', 'fora do tempo continua sendo extra');
+});

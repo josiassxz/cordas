@@ -46,10 +46,12 @@ export class Evaluator {
     const okB = this.toBeats(this.win.ok);
     if (beat < this.events[0].ev.beat - okB) return [];
     const pb = Math.floor(beat / this.len);
-    let best = null, bestDist = Infinity, near = false, avoidSt = null;
+    let best = null, bestDist = Infinity, near = false, avoidSt = null, tail = null;
     for (let p = Math.max(0, pb - 1); p <= pb + 1 && p < this.passes; p++) {
       for (let k = 0; k < this.events.length; k++) {
         const st = this.stateOf(p, k);
+        // sem validar corda: as demais cordas da MESMA palhetada chegam depois da 1ª e não são "extras"
+        if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40)) tail ||= st;
         if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
         if (this.free) { if (expectedStrings(st.ev).length && !st.matched.size) { const d = Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
@@ -61,6 +63,7 @@ export class Evaluator {
         if (d < bestDist) { best = st; bestDist = d; }
       }
     }
+    if (!best && tail) return [{ type: 'hit', string, note, key: tail.key, tail: true }];
     if (!best) {
       if (avoidSt) { avoidSt.avoid++; this.avoidHits++; return [{ type: 'avoid', string, note, key: avoidSt.key }]; }
       this.extras++; return [{ type: 'extra', string, note, near }];
