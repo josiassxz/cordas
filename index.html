@@ -45,6 +45,8 @@
       <span class="notes" id="stageNotes"></span>
       <span class="grow"></span>
       <span class="row" role="group" aria-label="Tamanho do braço">
+        <button class="btn ghost sm" id="fretsLess" aria-label="Menos casas" title="Menos casas">Casas −</button>
+        <button class="btn ghost sm" id="fretsMore" aria-label="Mais casas" title="Mais casas">Casas +</button>
         <button class="btn ghost sm" id="stageSmaller" aria-label="Diminuir braço" title="Diminuir braço">A−</button>
         <button class="btn ghost sm" id="stageBigger" aria-label="Aumentar braço" title="Aumentar braço">A+</button>
       </span>
@@ -69,6 +71,9 @@
     <label class="field"><span class="row between">Tamanho do braço <output id="stageOut" class="num"></output></span>
       <input type="range" id="stageScale" min="100" max="300" step="10">
       <small>Também dá para usar A− / A+ ao lado do braço.</small></label>
+    <label class="field"><span class="row between">Casas no braço <output id="fretsOut" class="num"></output></span>
+      <input type="range" id="stageFrets" min="12" max="24" step="1">
+      <small>A AG01 reporta casas de 1 a 22.</small></label>
     <label class="field"><span class="row between">Duração da vibração da corda <output id="susOut" class="num"></output></span>
       <input type="range" id="sustainMs" min="500" max="8000" step="250">
       <small>A guitarra não avisa quando a corda para (só o palm mute, que silencia tudo). O app apaga a nota depois desse tempo.</small></label>

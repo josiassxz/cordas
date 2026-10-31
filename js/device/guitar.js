@@ -124,6 +124,7 @@ export class Guitar extends EventTarget {
   // Casa pressionada (mesmo sem palhetar). A AG01 só envia enquanto o dedo se move/aperta; some após pressMs.
   press(ch, fret) {
     if (ch > 5) return;
+    ch = 5 - ch;   // nos CC 49/50 a ordem das cordas é inversa à das notas (confirmado na prática)
     clearTimeout(this.pressTimers.get(ch));
     const changed = this.pressed.get(ch) !== fret;
     this.pressed.set(ch, fret);

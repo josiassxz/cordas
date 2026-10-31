@@ -22,7 +22,7 @@ test('CC 49/50 viram casa pressionada e expiram', async () => {
   const ev = []; g.addEventListener('press', (e) => ev.push(e.detail)); g.addEventListener('unpress', (e) => ev.push('u' + e.detail.string));
   g.handle({ type: 'cc', ch: 2, a: 49, b: 5 }, 0);
   g.handle({ type: 'cc', ch: 2, a: 50, b: 5 }, 0);
-  assert.deepEqual(ev, [{ string: 2, fret: 5 }]);
+  assert.deepEqual(ev, [{ string: 3, fret: 5 }]);
   await new Promise((r) => setTimeout(r, 100));
-  assert.equal(g.pressed.size, 0); assert.equal(ev.at(-1), 'u2');
+  assert.equal(g.pressed.size, 0); assert.equal(ev.at(-1), 'u3');
 });

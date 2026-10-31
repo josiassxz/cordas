@@ -157,6 +157,13 @@ export class Fretboard {
     this.setExpected(this.expected);
   }
 
+  // Muda o nº de casas desenhadas (redesenha o braço mantendo o esperado).
+  setFrets(n) {
+    n = Math.max(12, Math.min(24, n | 0));
+    if (n === this.frets) return;
+    this.fadeTimers.forEach(clearTimeout); this.live.clear(); this.pressEls?.clear();
+    this.frets = n; this.build(); this.setExpected(this.expected);
+  }
   setOffset(n) { this.offset = n; }
   destroy() { this.fadeTimers.forEach(clearTimeout); this.host.replaceChildren(); this.host.classList.remove('fretboard'); }
 }
