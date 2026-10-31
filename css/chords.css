@@ -105,3 +105,12 @@
 .cpk-acts{display:flex;gap:2px}.cpk-acts button{width:22px;height:20px;border-radius:6px;color:var(--tx-2);font-size:13px;line-height:1}.cpk-acts button:hover:not(:disabled){background:var(--raised);color:var(--tx)}.cpk-acts button:disabled{opacity:.25}
 .cpk-arrow{color:var(--tx-3)}
 .cpk-foot{display:flex;justify-content:flex-end;gap:10px}
+
+/* abas do seletor + passo selecionado */
+.cpk-tabs{display:flex;gap:6px;border-bottom:1px solid var(--hair)}
+.cpk-tabs button{padding:8px 14px;border-radius:10px 10px 0 0;color:var(--tx-2);font-weight:600;cursor:pointer}
+.cpk-tabs button.on{background:var(--raised-2);color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+.cpk-step.sel{border-color:var(--accent);background:rgba(245,165,36,.14);box-shadow:0 0 0 2px rgba(245,165,36,.35)}
+.cpk-step{cursor:pointer}
+.cpk-varrow.big{flex-wrap:wrap;overflow:visible}.cpk-varrow.big .cpk-vtile{min-width:104px;position:relative}
+.cpk-vtile.cur{border-color:var(--accent);background:rgba(245,165,36,.12)}.cpk-vtile em{position:absolute;top:4px;right:6px;font-style:normal;font-size:10px;color:var(--accent);font-weight:700}
