@@ -61,7 +61,7 @@ export function startShell(app, views) {
   guitar.addEventListener('notes', (e) => {
     const act = e.detail.active, notes = [...act.entries()].sort((a, b) => a[0] - b[0]).map(([, n]) => n);
     const ch = notes.length >= 2 ? detectChord(notes) : null;
-    $('#stageChord').textContent = app.chordLabel?.() || (ch ? ch.name : notes.length === 1 ? noteName(notes[0]) : '—');
+    $('#stageChord').textContent = ch ? ch.name : notes.length === 1 ? noteName(notes[0]) : '—';
     $('#stageNotes').textContent = notes.map(noteName).join(' ');
   });
   guitar.addEventListener('noteon', (e) => { if (store.get('settings.synth') && guitar.status === 'connected') audio.pluck(e.detail.note, audio.context.currentTime, 0.15 + 0.4 * Math.min(1, e.detail.vel / 100)); });

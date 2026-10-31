@@ -62,8 +62,6 @@ function mountUI(app, run, opts) {
   const hw = new (vertical ? Lane : Highway)(cv, () => ({ score: run.score, pos: run.position(), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
   hw.start();
   const tr = mountTransport($('.pr-bar'), run);
-  let montage = null;   // { text, t }: acorde cuja MONTAGEM no braço foi aprovada (o som pode ter cordas soltas a mais)
-  app.chordLabel = () => (montage && performance.now() - montage.t < 2500 ? montage.text : null);
   const counts = { perfect: 0, good: 0, ok: 0, miss: 0, extra: 0 };
   let holdUntil = 0, lastKey = null, flashTimer;
 
@@ -92,9 +90,9 @@ function mountUI(app, run, opts) {
     run.on('progress', syncStage),
     run.on('result', (r) => {
       const nm = run.chordAt?.(r.beat)?.chordId;
-      if (nm && validationOf(app.store.get('settings')).neck && r.grade !== 'miss' && app.guitar.status === 'connected') { montage = { text: `${nm} ✓`, t: performance.now() }; const lab = document.getElementById('stageChord'); if (lab) lab.textContent = montage.text; }
       counts[r.grade] = (counts[r.grade] || 0) + 1; paintStats();
       if (r.grade !== 'miss') {
+        if (r.heardName && nm && r.heardName.replace(/\s/g, '') !== nm.replace(/\s/g, '')) setFlash(`✓ Conta como ${nm} (você fez ${r.heardName})`, r.grade); else
         setFlash(`${MSG[r.grade]}${r.delta != null && Math.abs(r.delta) > 12 ? ` · ${r.delta > 0 ? 'atrasado' : 'adiantado'} ${Math.abs(Math.round(r.delta))} ms` : ''}${r.dirOk === false ? ' · direção diferente' : ''}`, r.grade);
         if (r.delta != null) { const lim = Math.min(200, 60000 / run.effectiveBpm / run.score.subdivision * 0.45); needle.style.opacity = 1; needle.style.left = `${50 + clamp(r.delta / lim, -1, 1) * 50}%`; }
       } else setFlash(r.why?.text || 'Perdeu essa', 'miss');
@@ -137,5 +135,5 @@ function mountUI(app, run, opts) {
     if (ap) { const v = clamp(app.store.get('settings.latency', 0) + +ap.dataset.apply, 0, 250); app.store.set('settings.latency', v); app.toast(`Latência ajustada para ${v} ms`); ap.remove(); }
   });
   paintState(); paintStats(); syncStage();
-  return { destroy() { app.chordLabel = null; offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
+  return { destroy() { offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
 }

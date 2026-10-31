@@ -222,7 +222,7 @@ test('Ré maior tocado nas 6 cordas: montagem certa passa mesmo com o som "Dadd9
   const play = (opts) => { const e = new Evaluator(d, { passes: 1, neck: () => neck, ...opts }); six.forEach((n, i) => e.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 })); return e.advance(10); };
   const a = play({ neckOn: true, sound: 'off' }); assert.equal(a.length, 1); assert.notEqual(a[0].grade, 'miss', 'montagem certa = acerto');
   assert.equal(a[0].why, null);
-  const b = play({ neckOn: true, sound: 'chord', rigor: 'strict' }); assert.equal(b[0].grade, 'miss', 'rigor estrito: as cordas soltas a mais mudam o acorde');
+  const b = play({ neckOn: true, sound: 'chord', rigor: 'strict' }); assert.notEqual(b[0].grade, 'miss', 'som por acorde: Dadd9/E (cordas soltas a mais) conta como D'); assert.ok(b[0].heardName, 'guarda o nome do que soou');
   const c = play({ neckOn: true, sound: 'strings' }); assert.ok(c.length >= 1);
   const wrongNeck = new Map([[3, 2], [4, 3]]);                           // falta o dedo da corda 1
   const e2 = new Evaluator(d, { passes: 1, neck: () => wrongNeck, neckOn: true, sound: 'off' }); six.forEach((n, i) => e2.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 }));
@@ -232,4 +232,18 @@ test('Ré maior tocado nas 6 cordas: montagem certa passa mesmo com o som "Dadd9
   assert.equal(e3.advance(10)[0].grade, 'miss');
   const e4 = new Evaluator(d, { passes: 1, neck, neckOn: true, sound: 'chord' }); e4.neck = () => neck; [50, 57, 62, 66].forEach((n, i) => e4.noteOn({ string: i + 2, note: n, beat: 0.01 + i * 0.03 }));
   assert.notEqual(e4.advance(10)[0].grade, 'miss');
+});
+
+test('som pelo ACORDE: variações contam como o acorde pedido; terça errada continua errada; corda a corda cobra tudo', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const c = normalizeScore({ id: 'c', title: 'C', bpm: 100, lengthBeats: 4, events: [{ beat: 0, strum: { dir: 'D', strings: [1, 2, 3, 4, 5], frets: [-1, 3, 2, 0, 1, 0] } }] });
+  const run = (notes, opts) => { const e = new Evaluator(c, { passes: 1, neckOn: false, sound: 'chord', ...opts }); notes.forEach((n, i) => e.noteOn({ string: i % 6, note: n, beat: 0.01 + i * 0.03 })); return e.advance(10)[0]; };
+  assert.notEqual(run([52, 48, 55, 60, 64, 62]).grade, 'miss', 'Cadd9/E (E grave, D a mais) = C');
+  assert.equal(run([48, 51, 55, 60]).grade, 'miss', 'Cm (terça menor) não é C');
+  const am = normalizeScore({ id: 'am', title: 'Am', bpm: 100, lengthBeats: 4, events: [{ beat: 0, strum: { dir: 'D', strings: [1, 2, 3, 4, 5], frets: [-1, 0, 2, 2, 1, 0] } }] });
+  const e = new Evaluator(am, { passes: 1, neckOn: false, sound: 'chord' }); [40, 45, 52, 57, 60, 64].forEach((n, i) => e.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 }));
+  assert.notEqual(e.advance(10)[0].grade, 'miss', 'Am/E conta como Am');
+  const strict = new Evaluator(c, { passes: 1, neckOn: false, sound: 'strings' }); [40, 52, 55, 60, 64].forEach((n, i) => strict.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 }));
+  assert.ok(strict.extras >= 1, 'corda a corda: a corda a mais (Mi grave) é cobrada');
 });

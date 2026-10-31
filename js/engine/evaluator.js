@@ -1,6 +1,6 @@
 // Avaliador puro: compara notas recebidas do dispositivo (corda, nota, posição em batidas) com o Score.
 // Sem DOM, sem relógio: o chamador informa a posição `beat` de cada nota (Transport.beatAtPerf).
-import { STANDARD, matchChord, pcName } from '../music/theory.js';
+import { STANDARD, matchChord, pcName, detectChord } from '../music/theory.js';
 import { expectedStrings, expectedPitch, isScored } from './score.js';
 
 export const GRADE_WEIGHT = { perfect: 1, good: 0.75, ok: 0.45, miss: 0 };
@@ -113,21 +113,28 @@ export class Evaluator {
   }
   drain() { const out = this.pending; this.pending = []; return out; }
 
-  // ---- validação pelo ACORDE: as notas tocadas (qualquer corda) formam o acorde pedido? ----
+  // ---- validação pelo ACORDE: variações contam como o acorde pedido ----
+  // O que define o acorde é a raiz + a terça (ou a 2ª/4ª nos suspensos) + a sétima, se o pedido tiver. Notas a mais
+  // (add9, baixo diferente como /E, quinta dobrada…) NÃO tiram o acerto: C pedido e Cadd9/E tocado = C certo.
   resolveChord(st) {
     const ev = st.ev, exp = expectedStrings(ev), want = exp.map((x) => expectedPitch(ev, x, this.offset, this.tuning)).filter((n) => n != null);
-    const E = new Set(want.map((n) => n % 12)), P = new Set(st.heard.map((h) => h.note % 12));
+    const heardNotes = st.heard.map((h) => h.note), P = new Set(heardNotes.map((n) => n % 12));
     const rootPc = want.length ? Math.min(...want) % 12 : null;
-    const missing = [...E].filter((x) => !P.has(x)), extra = [...P].filter((x) => !E.has(x));
+    const rel = new Set(want.map((n) => ((n % 12) - rootPc + 12) % 12));
+    const essential = new Set([0]);
+    for (const [a, b] of [[4, 3], [3, 4]]) if (rel.has(a)) essential.add(a);          // terça (maior ou menor)
+    if (![3, 4].some((x) => rel.has(x))) { if (rel.has(2)) essential.add(2); if (rel.has(5)) essential.add(5); if (rel.size === 2 && rel.has(7)) essential.add(7); }   // sus / power chord
+    for (const x of [10, 11]) if (rel.has(x)) essential.add(x);                          // sétima, se o pedido a tem
+    const missing = [...essential].filter((r) => !P.has((rootPc + r) % 12));
     let ok;
-    if (!E.size) ok = true;
-    else if (this.rigor === 'root') ok = P.has(rootPc) && (E.size < 2 || P.size >= 2);
-    else if (this.rigor === 'strict') ok = !missing.length && !extra.length;
-    else ok = P.has(rootPc) && missing.length <= 1 && extra.length <= 1;
+    if (rootPc == null) ok = true;
+    else if (this.rigor === 'root') ok = P.has(rootPc) && (want.length < 2 || P.size >= 2);
+    else ok = missing.length === 0;
     const nk = st.neckRes && !st.neckRes.ok ? st.neckRes : null;
+    st.heardName = detectChord(heardNotes)?.name || null;   // o que o som realmente formou (para mostrar ao vivo)
     if (ok && !nk) for (const x of exp) st.matched.set(x, { ok: true, note: 0, beat: st.firstBeat });
     else if (nk) st.why = nk.why;
-    else st.why = { type: 'chord', text: `Acorde diferente do pedido${missing.length ? ` — faltou ${missing.map(pcName).join(', ')}` : ''}${extra.length ? `${missing.length ? ';' : ' —'} sobrou ${extra.map(pcName).join(', ')}` : ''}` };
+    else st.why = { type: 'chord', text: `Acorde diferente do pedido — faltou ${missing.map((r) => pcName(rootPc + r)).join(', ')}${st.heardName ? ` (você fez ${st.heardName})` : ''}` };
     return this.resolve(st);
   }
   // ---- validação pelo BRAÇO: as casas apertadas agora são as do acorde pedido? (sem sensor = não confere) ----
@@ -159,7 +166,7 @@ export class Evaluator {
     if (st.neckRes && !st.neckRes.ok && grade !== 'miss') { grade = 'miss'; st.why = st.neckRes.why; }
     const strings = {};
     for (const s of exp) { const m = st.matched.get(s); strings[s] = m ? (m.ok ? 'ok' : 'pitch') : 'miss'; }
-    const r = { key: st.key, p: st.p, i: st.i, beat: st.beat, grade, delta, coverage, dirOk, dir, strings, avoid: st.avoid, stringsOk: okStrings.length, stringsTotal: exp.length, timed: !!ev.check.timing, why: st.why || null };
+    const r = { key: st.key, p: st.p, i: st.i, beat: st.beat, grade, delta, coverage, dirOk, dir, strings, avoid: st.avoid, stringsOk: okStrings.length, stringsTotal: exp.length, timed: !!ev.check.timing, why: st.why || null, heardName: st.heardName || null };
     this.results.push(r); this.pending.push(r);
     return r;
   }
