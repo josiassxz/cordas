@@ -89,14 +89,16 @@ test('mudar o BPM cancela os cliques já agendados e recalcula o próximo no nov
   tr.stop();
 });
 
-test('pausar/parar qualquer relógio silencia todos os metrônomos vivos', () => {
+test('regra única de relógio: iniciar pausa os outros, pausar pausa todos, continuar pausa os outros, parar encerra todos', () => {
   const mk = () => new Transport({ context: { currentTime: 0 }, master: {} }, { silent: true, clock: () => 0 });
   const a = mk(), b = mk(), c = mk();
-  [a, b, c].forEach((t) => t.start({ countInBeats: 0 }));
-  assert.equal(Transport.liveCount, 3);
-  Transport.pauseAll(c); assert.equal(Transport.liveCount, 1); assert.equal(a.state, 'paused'); assert.equal(c.state, 'running');
-  Transport.stopAll(); assert.equal(Transport.liveCount, 0); assert.equal(c.state, 'stopped');
-  a.start({ countInBeats: 0 }); a.start({ countInBeats: 0 }); a.pause(); assert.equal(Transport.liveCount, 0, 'start repetido não deixa relógio órfão'); Transport.stopAll();
+  a.start({ countInBeats: 0 }); b.start({ countInBeats: 0 }); c.start({ countInBeats: 0 });
+  assert.equal(Transport.liveCount, 1, 'só o último iniciado toca'); assert.equal(c.state, 'running'); assert.equal(a.state, 'paused'); assert.equal(b.state, 'paused');
+  b.pause(); assert.equal(Transport.liveCount, 0, 'pausar um pausa todos'); assert.equal(c.state, 'paused');
+  a.resume(); assert.equal(Transport.liveCount, 1); assert.equal(a.state, 'running'); assert.equal(c.state, 'paused', 'continuar pausa os outros');
+  a.start({ countInBeats: 0 }); a.start({ countInBeats: 0 }); assert.equal(Transport.liveCount, 1, 'start repetido não deixa relógio órfão');
+  c.stop(); assert.equal(c.state, 'stopped'); assert.equal(a.state, 'running', 'parar UM relógio não derruba os outros (ex.: fechar a calibração com o exercício pausado)');
+  Transport.stopAll(); assert.equal(Transport.liveCount, 0, 'stopAll (botão Parar do exercício, troca de tela) encerra todos'); assert.deepEqual([a, b, c].map((t) => t.state), ['stopped', 'stopped', 'stopped']);
 });
 
 test('diagnóstico: relógio vivo informa a origem; estando "pausado", update() do Runner pausa qualquer relógio extra', async () => {
@@ -107,8 +109,17 @@ test('diagnóstico: relógio vivo informa a origem; estando "pausado", update() 
   const r = new Runner({ guitar: null, audio: null, settings: () => ({}), clock: () => 0, silent: true }, { id: 'x', title: 'x', bpm: 80, lengthBeats: 4, events: [{ beat: 0, notes: [{ string: 0, fret: 0 }] }] }, { autoUpdate: false, countIn: 0 });
   r.start(); r.pause();
   assert.equal(stray.state, 'paused', 'pausar o exercício já pausa o relógio extra');
-  stray.start({ countInBeats: 0 }); assert.equal(Transport.liveCount, 1);   // um relógio extra renasce enquanto o exercício segue pausado...
+  stray.resume(); assert.equal(Transport.liveCount, 1);   // um relógio extra renasce enquanto o exercício segue pausado...
   r.update();                                                              // ...e o próximo ciclo do Runner o silencia
   assert.equal(Transport.liveCount, 0);
   r.destroy(); Transport.stopAll();
+});
+
+test('relógio isento (calibração) continua tocando quando o exercício está pausado', () => {
+  const mk = () => new Transport({ context: { currentTime: 0 }, master: {} }, { silent: true, clock: () => 0 });
+  const ex = mk(), calib = mk(); calib.exempt = true;
+  ex.start({ countInBeats: 0 }); ex.pause();
+  calib.start({ countInBeats: 0 }); Transport.pauseAll();
+  assert.equal(calib.state, 'running', 'pausar o exercício não cala a calibração aberta'); assert.equal(ex.state, 'paused');
+  calib.stop(); Transport.stopAll();
 });

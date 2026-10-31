@@ -5,11 +5,16 @@
 // Estados: stopped -> running <-> paused. Eventos: 'tick' {beat,time,isBeat,isBar,countIn}, 'state', 'tempo'.
 // Pausa também silencia o clique já agendado (via ganho próprio), então nada toca "por inércia".
 
-const LIVE = new Set();   // todo relógio que está tocando: pausar/parar QUALQUER exercício silencia todos (nunca sobra um metrônomo escondido)
+// REGRA ÚNICA DE RELÓGIO (vale para o app inteiro, em qualquer tela):
+//   pausar   -> todos os relógios são pausados (silêncio total)
+//   iniciar / continuar / reiniciar -> todos os OUTROS são pausados; só o deste exercício toca
+//   parar    -> todos são encerrados
+// LIVE = tocando agora; OPEN = tocando ou pausado (ainda não encerrado).
+const LIVE = new Set(), OPEN = new Set();
 
 export class Transport extends EventTarget {
-  static pauseAll(except = null) { for (const t of [...LIVE]) if (t !== except) t.pause(); }
-  static stopAll() { for (const t of [...LIVE]) t.stop(); }
+  static pauseAll(except = null) { for (const t of [...LIVE]) if (t !== except && !t.exempt) t.pause(); }   // exempt: relógio de uma ferramenta aberta de propósito (ex.: calibração), que toca mesmo com o exercício pausado
+  static stopAll(except = null) { for (const t of [...OPEN]) if (t !== except) t.stop(); }
   static get liveCount() { return LIVE.size; }
   static live() { return [...LIVE].map((t) => ({ bpm: t.bpm, state: t.state, origem: t.origin })); }   // diagnóstico: quem criou cada relógio vivo
   constructor(audio, o = {}) {
@@ -39,9 +44,10 @@ export class Transport extends EventTarget {
   position(at = this.now()) { return this.running ? this.pos0 + (at - this.t0) * this.effectiveBpm / 60 : this.pos0; }
   get bar() { return Math.floor(this.position() / this.beatsPerBar); }
 
-  setState(s) { this.state = s; if (s === 'running') LIVE.add(this); else LIVE.delete(this); this.dispatchEvent(new CustomEvent('state', { detail: { state: s } })); }
+  setState(s) { this.state = s; if (s === 'running') LIVE.add(this); else LIVE.delete(this); if (s === 'stopped') OPEN.delete(this); else OPEN.add(this); this.dispatchEvent(new CustomEvent('state', { detail: { state: s } })); }
 
   start({ countInBeats = this.beatsPerBar, after = 0 } = {}) {
+    Transport.pauseAll(this);   // só este relógio toca
     this.pos0 = -countInBeats;
     this.t0 = Math.max(this.now() + 0.12, Math.min(after || 0, this.now() + 1.6));   // `after`: mantém o pulso do clique anterior (sem 2º metrônomo fora de fase)
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
@@ -52,15 +58,17 @@ export class Transport extends EventTarget {
   }
 
   pause() {
-    if (!this.running) return;
+    if (!this.running) { Transport.pauseAll(); return; }   // mesmo que este já esteja parado, nada mais pode continuar tocando
     this.pos0 = this.position();
     clearInterval(this.timer); this.timer = null;
     this.dropBus();
     this.setState('paused');
+    Transport.pauseAll();
   }
 
   resume() {
     if (this.state !== 'paused') return;
+    Transport.pauseAll(this);
     this.t0 = this.now() + 0.08;
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
     this.makeBus();

@@ -58,12 +58,13 @@ export function startShell(app, views) {
   app.stage = board;
   bindGuitar(board, guitar);
   bindDiagramPress(guitar);
-  app.openSync = () => openSync(app); app.openCalibration = () => openCalibration(app); app.isCalibrated = () => isCalibrated(store);
+  const openSyncPaused = () => { app.practice?.current?.pause?.(); openSync(app); };   // a calibração usa o próprio relógio: o exercício é pausado de verdade antes
+  app.openSync = openSyncPaused; app.openCalibration = () => openCalibration(app); app.isCalibrated = () => isCalibrated(store);
   if (store.get('settings.fretOffset')) store.set('settings.fretOffset', 0);   // o ajuste de casas foi removido: limpa qualquer valor que tenha sobrado
   // As casas mostradas nunca sofrem desvio. Uma vez só, zera desvios que ficaram gravados de calibrações antigas.
   if (!store.get('settings.noOffsetsV1')) { store.set('settings.pitchOffset', 0); store.set('settings.fretOffset', 0); store.set('settings.noOffsetsV1', true); }
   document.addEventListener('corda:calibrate', () => openCalibration(app));
-  document.addEventListener('corda:sync', () => openSync(app));
+  document.addEventListener('corda:sync', openSyncPaused);
   guitar.addEventListener('notes', (e) => {
     const act = e.detail.active, notes = [...act.entries()].sort((a, b) => a[0] - b[0]).map(([, n]) => n);
     const ch = notes.length >= 2 ? detectChord(notes) : null;
@@ -129,7 +130,7 @@ export function startShell(app, views) {
   $('#stageScale').addEventListener('input', (e) => { applyScale(+e.target.value); fillRange(e.target); });
   $('#stageFrets').addEventListener('input', (e) => { applyFrets(+e.target.value); fillRange(e.target); });
   $('#sustainMs').addEventListener('input', (e) => { guitar.sustainMs = +e.target.value; store.set('settings.sustainMs', +e.target.value); $('#susOut').textContent = (e.target.value / 1000).toFixed(1) + ' s'; fillRange(e.target); });
-  $('#syncBtn').addEventListener('click', () => { dlg.close(); openSync(app); });
+  $('#syncBtn').addEventListener('click', () => { dlg.close(); openSyncPaused(); });
 
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });

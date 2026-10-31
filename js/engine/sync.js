@@ -57,7 +57,7 @@ export function openSync(app) {
   function go() {
     stop(); deltas = []; done = false; paint(); $('#syApply').hidden = true; $('#syMsg').textContent = 'Contagem… depois palhete junto de cada clique.';
     const settings = app.store.get('settings');
-    tr = new Transport(app.audio, { bpm, beatsPerBar: 4, subdivision: 1, click: true, latencyMs: 0 });
+    tr = new Transport(app.audio, { bpm, beatsPerBar: 4, subdivision: 1, click: true, latencyMs: 0 }); tr.exempt = true;   // a calibração toca mesmo com o exercício pausado por trás
     tr.start({ countInBeats: COUNT_IN });
     guitar.addEventListener('strumstart', onStrum);
     app.audio.context.resume?.();

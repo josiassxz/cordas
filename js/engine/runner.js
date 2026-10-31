@@ -84,7 +84,7 @@ export class Runner {
   pause() {
     if (this.finished || !['running', 'countin'].includes(this._state)) return;
     this.update();
-    this.transport?.pause(); Transport.pauseAll();   // pausar silencia TODO metrônomo vivo, inclusive algum escondido
+    this.transport?.pause(); Transport.pauseAll();   // regra única: pausar silencia TODO metrônomo
     this.prevState = this._state; this.setState('paused');
   }
   resume() {
@@ -285,7 +285,7 @@ export class Runner {
       this.collect(reason === 'done' ? this.evaluator.advance(this.passes * this.score.lengthBeats + 10) : this.evaluator.advance(Math.max(0, pos)));
       this.advanceChords(reason === 'done' ? this.passes * this.score.lengthBeats + 10 : Math.max(0, pos));
     }
-    this.attach(false); clearInterval(this.timer); this.transport?.stop();
+    this.attach(false); clearInterval(this.timer); this.transport?.stop(); Transport.stopAll();   // PARAR (ou terminar) encerra todos os relógios
     this.finished = true; this.setState('finished');
     const summary = this.summary(reason); this.summaryCache = summary;
     const enough = reason === 'done' || summary.expected >= 6;
