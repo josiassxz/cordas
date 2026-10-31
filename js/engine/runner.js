@@ -103,6 +103,12 @@ export class Runner {
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
   setValidation({ neck, sound }) { const e = this.evaluator; if (e) { if (neck != null) e.neckOn = neck; if (sound != null) { e.sound = sound; e.free = sound !== 'strings'; } } this.deps.setValidation?.({ neck, sound }); }
+  // Compasso (tempos por compasso) e subdivisão (batidas por tempo): mudam a grade da pista e o metrônomo, ao vivo.
+  setMeter({ beats, sub } = {}) {
+    if (beats) this.score.beatsPerBar = beats;
+    if (sub) { this.score.subdivision = sub; if (this.evaluator) this.evaluator.sub = sub; }
+    this.transport?.setMeter({ beats, sub }); this.emit('tempo', {});
+  }
   setClick(on) { this.click = !!on; if (this.transport) this.transport.click = !!on; }
   setSubClick(on) { this.subClick = !!on; if (this.transport) this.transport.subClick = !!on; }
   setClickVolume(v) { this.clickVolume = v; this.transport?.setVolume(v); }

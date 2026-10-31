@@ -48,7 +48,7 @@ function mountUI(app, run, opts) {
     </div>
     ${notes.length ? `<div class="pr-notice"><span class="badge guide">guia</span><div>${notes.map(esc).join(' ')}</div></div>` : ''}
     <div class="pr-bar"></div>
-    <div class="pr-hw"><canvas aria-label="Pista de notas e batidas"></canvas><div class="pr-flash" aria-live="polite"></div></div>
+    <div class="pr-hw"><canvas aria-label="Pista de notas e batidas"></canvas><button class="pr-full" data-full aria-label="Timeline em tela cheia (F)" title="Timeline em tela cheia (F)">⛶</button><div class="pr-flash" aria-live="polite"></div></div>
     <div class="pr-needle" aria-hidden="true"><span class="lbl l">cedo</span><span class="lbl r">tarde</span><div class="track"></div><div class="mid"></div><div class="needle"></div></div>
     <div class="pr-stats num"><span>Acerto <b data-s="acc">–</b></span><span>Perfeitas <b data-s="perfect">0</b></span><span>Boas <b data-s="good">0</b></span><span>No limite <b data-s="ok">0</b></span><span>Perdidas <b data-s="miss">0</b></span><span>Extras <b data-s="extra">0</b></span></div>
     <div class="pr-summary panel" hidden></div>
@@ -128,12 +128,17 @@ function mountUI(app, run, opts) {
     opts.onFinish?.(s);
   }
 
+  const root = host.querySelector('.pr');
+  const toggleFull = () => { if (document.fullscreenElement) document.exitFullscreen?.(); else root.requestFullscreen?.().catch(() => app.toast('Seu navegador não liberou a tela cheia.')); };
+  const onFullKey = (e) => { if (!host.isConnected || e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return; if (e.key === 'f' || e.key === 'F') toggleFull(); };
+  document.addEventListener('keydown', onFullKey);
   host.addEventListener('click', (e) => {
+    if (e.target.closest('[data-full]')) { toggleFull(); return; }
     if (e.target.closest('[data-close]')) { opts.onClose?.(); return; }
     if (e.target.closest('[data-again]')) { Object.keys(counts).forEach((k) => (counts[k] = 0)); paintStats(); needle.style.opacity = 0; run.restart(); return; }
     const ap = e.target.closest('[data-apply]');
     if (ap) { const v = clamp(app.store.get('settings.latency', 0) + +ap.dataset.apply, 0, 250); app.store.set('settings.latency', v); app.toast(`Latência ajustada para ${v} ms`); ap.remove(); }
   });
   paintState(); paintStats(); syncStage();
-  return { destroy() { offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
+  return { destroy() { document.removeEventListener('keydown', onFullKey); if (document.fullscreenElement && root.contains(document.fullscreenElement)) document.exitFullscreen?.(); offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
 }

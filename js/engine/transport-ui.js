@@ -1,6 +1,7 @@
 // Barra de transporte reutilizável: Iniciar/Pausar/Continuar, Reiniciar, Parar, BPM, velocidade, repetição, guia, progresso.
 import { icon } from '../core/dom.js';
 import { validationOf } from './runner.js';
+import { TIME_SIGNATURES, SUBDIVISIONS } from '../content/patterns.js';
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25];
 const REPEATS = [['once', '1×'], [3, '3×'], ['loop', '∞']];
@@ -18,6 +19,9 @@ export function mountTransport(host, run, { keys = true } = {}) {
     <div class="pr-pop" hidden role="dialog" aria-label="Configurações do exercício">
       <div class="pr-pop-row"><span class="h3">Velocidade</span><div class="seg" role="group" aria-label="Velocidade">${SPEEDS.map((s) => `<button data-speed="${s}" aria-pressed="false">${s * 100}%</button>`).join('')}</div></div>
       <div class="pr-pop-row"><span class="h3">Repetir</span><div class="seg" role="group" aria-label="Repetir">${REPEATS.map(([v, l]) => `<button data-repeat="${v}" aria-pressed="false" title="Repetir">${l}</button>`).join('')}</div></div>
+      <div class="pr-pop-row"><span class="h3">Compasso e batidas por tempo</span><div class="row wrap">
+        <select data-a="meter" aria-label="Compasso">${TIME_SIGNATURES.map((t) => `<option value="${t.id}">${t.label} — ${t.note}</option>`).join('')}</select>
+        <select data-a="subdiv" aria-label="Batidas por tempo (subdivisão)">${SUBDIVISIONS.map((t) => `<option value="${t.id}">${t.id} por tempo — ${t.label}</option>`).join('')}</select></div></div>
       <div class="pr-pop-row"><span class="h3">Som</span><div class="row wrap">
         <label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>
         <label class="chip pr-toggle" title="Clique suave também nas subdivisões (e, &, a)"><input type="checkbox" data-a="subclick"> Subdivisões</label>
@@ -40,6 +44,10 @@ export function mountTransport(host, run, { keys = true } = {}) {
     const base = run.canBpm && run.speed !== 1 ? ` · base ${run.bpm}` : '';
     $('[data-r=bpm] small').textContent = 'BPM' + base;
     const br = $('[data-a=bpmr]'); if (br && document.activeElement !== br) { br.value = run.bpm; br.style.setProperty('--p', ((run.bpm - br.min) / (br.max - br.min)) * 100 + '%'); }
+    { const bpb = run.score.beatsPerBar, sub = run.score.subdivision, ms = $('[data-a=meter]'), sd = $('[data-a=subdiv]');
+      if (ms) { let t = TIME_SIGNATURES.find((x) => x.beats === bpb && x.sub === sub) || TIME_SIGNATURES.find((x) => x.beats === bpb);
+        if (!t) { if (!ms.querySelector('[data-custom]')) ms.insertAdjacentHTML('beforeend', `<option data-custom value="custom">${bpb} tempos</option>`); ms.value = 'custom'; } else { ms.querySelector('[data-custom]')?.remove(); ms.value = t.id; } }
+      if (sd) sd.value = String(sub); }
     const sc = $('[data-a=subclick]'); if (sc) sc.checked = !!run.subClick;
     { const v = run.evaluator ? { neck: run.evaluator.neckOn, sound: run.evaluator.sound } : validationOf(run.deps.settings()); const vn = $('[data-a=vneck]'), vs = $('[data-a=vsound]'); if (vn) vn.checked = v.neck; if (vs) vs.value = v.sound; }
   };
@@ -71,6 +79,8 @@ export function mountTransport(host, run, { keys = true } = {}) {
     window.addEventListener('pointerup', end);
   });
   host.addEventListener('change', (e) => { if (e.target.dataset.a === 'subclick') run.setSubClick(e.target.checked);
+    if (e.target.dataset.a === 'meter' && e.target.value !== 'custom') { const t = TIME_SIGNATURES.find((x) => x.id === e.target.value); run.setMeter({ beats: t.beats, sub: t.sub }); paint(); }
+    if (e.target.dataset.a === 'subdiv') { run.setMeter({ sub: +e.target.value }); paint(); }
     if (e.target.dataset.a === 'vneck') { run.setValidation({ neck: e.target.checked }); paint(); }
     if (e.target.dataset.a === 'vsound') { run.setValidation({ sound: e.target.value }); paint(); } if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
   const offs = [run.on('state', paint), run.on('tempo', paint), run.on('progress', prog), run.on('pass', prog)];

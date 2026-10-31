@@ -71,6 +71,12 @@ export class Transport extends EventTarget {
 
   restart(opts) { this.stop(); this.start(opts); }
 
+  // Muda compasso/subdivisão sem parar: o próximo clique já segue a nova grade.
+  setMeter({ beats, sub } = {}) {
+    if (beats) this.beatsPerBar = beats;
+    if (sub) { this.subdivision = sub; this.nextTick = Math.ceil(this.nextTick * sub - 1e-9) / sub; }
+    this.dispatchEvent(new CustomEvent('tempo', { detail: { bpm: this.bpm, speed: this.speed } }));
+  }
   // Muda tempo sem perder a posição.
   rebase(fn) {
     const wasRunning = this.running, p = this.position();

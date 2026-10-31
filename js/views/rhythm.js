@@ -14,6 +14,22 @@ const BY_SIG = {
   '6/8': [['Balada 6/8', 'D--D-U'], ['Cavalgada 6/8', 'D-UD-U']], '12/8': [['Blues lento', 'D--D--D--D--'], ['Shuffle 12/8', 'D-UD-UD-UD-U']],
 };
 const sigOf = (id) => TIME_SIGNATURES.find((t) => t.id === id);
+// Score de uma PROGRESSÃO usando um padrão feito no Construtor: um acorde por compasso, as mesmas posições/direções/cordas.
+function cellsProgScore(p, symbols, bars, bpm) {
+  const per = sigOf(p.sig).beats, events = [], chordList = [];
+  for (let b = 0; b < bars; b++) {
+    const sym = symbols[b % symbols.length], sh = shapeOf(sym);
+    chordList.push({ beat: b * per, chordId: sym, root: sh.root, q: sh.q, frets: sh.frets, fingers: sh.fingers });
+    p.cells.forEach((c, i) => {
+      if (c.dir === '-') return;
+      const st = c.strings.filter((x) => sh.strings.includes(x)); if (!st.length) return;
+      const beat = b * per + i / p.sub;
+      if (st.length === 1) events.push({ beat, dur: 1 / p.sub, notes: [{ string: st[0], fret: sh.frets[st[0]], ...(sh.fingers[st[0]] ? { finger: sh.fingers[st[0]] } : {}) }] });
+      else events.push({ beat, dur: 1 / p.sub, strum: { dir: c.dir, strings: st, frets: sh.frets, fingers: sh.fingers }, check: { dir: true } });
+    });
+  }
+  return normalizeScore({ id: `rhythm-prog-mine-${p.name}-${symbols.join('_')}`.replace(/[^\w-]/g, '_'), title: `${p.name} · progressão`, technique: 'chord-change', level: 3, bpm, beatsPerBar: per, subdivision: p.sub, lengthBeats: bars * per, events, chords: chordList });
+}
 const PATHS = [
   ['Só para baixo', 'D-D-D-D-', 60, 'Em'], ['Pop clássico', 'D-DU-UDU', 70, 'Em'], ['Balada', 'D--U-UDU', 76, 'Am'], ['Rock', 'D-D-D-DU', 88, 'E'],
   ['Folk', 'D-DUDU-U', 92, 'G'], ['Colcheias contínuas', 'DUDUDUDU', 100, 'C'], ['Cavalgada', 'D-DUD-DU', 96, 'Em'],
@@ -26,6 +42,7 @@ export default {
     let tab = params.tab || 'metro', cleanup = null, run = null, bs = null;
     const ps = [];
     const store = app.store;
+    const savedPats = () => store.get('rhythm.custom', []);
     upgradeShapes();
     const shell = () => {
       el.innerHTML = `<div class="page rhythm"><div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button role="tab" data-tab="${id}" aria-selected="${id === tab}">${n}</button>`).join('')}</div><div id="rtab"></div></div>`;
@@ -129,7 +146,8 @@ export default {
             <div class="field"><span class="h3">Duração</span><div class="seg">${[4, 8, 16].map((n) => `<button data-bars="${n}" aria-pressed="${n === s.bars}">${n} compassos</button>`).join('')}</div></div>
             <div class="field"><span class="h3">Opções</span><div class="row wrap"><label class="chip pr-toggle"><input type="checkbox" id="guide" ${s.guide ? 'checked' : ''}> Guia sonoro</label></div></div>
           </div>
-          <div class="row"><button class="btn primary lg" data-go>${icon('play')} Praticar</button><small class="dim">Sem guitarra? Use o modo demo: Espaço = ↓, ↑ = ↑.</small></div></div>`;
+          ${withProg ? `<div class="field"><span class="h3">Usar um padrão meu (salvo no Construtor)</span><select id="mine" aria-label="Padrão salvo">${[['', '— usar o padrão pronto escolhido acima —'], ...savedPats().map((p) => [p.name, `${p.name} · ${p.sig}`])].map(([v, l]) => `<option value="${esc(v)}" ${s.mine === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select><small class="dim">${savedPats().length ? 'Cada compasso toca um acorde da progressão com as posições, direções e cordas do seu padrão.' : 'Nenhum padrão salvo ainda: monte um no Construtor e use “Salvar padrão”.'}</small></div>` : ''}
+          <div class="row wrap"><button class="btn primary lg" data-go>${icon('play')} Praticar</button><button class="btn" data-edit>Editar este padrão no Construtor</button><small class="dim">Sem guitarra? Use o modo demo: Espaço = ↓, ↑ = ↑.</small></div></div>`;
         paintIcons(root);
         root.querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%'));
       };
@@ -141,15 +159,22 @@ export default {
         else if (b.dataset.prog) { s.prog = b.dataset.prog; draw(); }
         else if ('pickprog' in b.dataset) { pickChords({ title: 'Monte sua progressão (um acorde por compasso)', initial: s.custom || [], min: 2, max: 16, presets: PROGRESSIONS.map((p) => ({ name: p.name, symbols: p.chords })) }).then((seq) => { if (seq) { s.custom = seq.map((x) => x.symbol); s.prog = 'custom'; draw(); } }); }
         else if (b.dataset.bars) { s.bars = +b.dataset.bars; draw(); }
+        else if ('edit' in b.dataset) {   // abre o padrão escolhido já preenchido no Construtor, para mudar batidas por tempo, direções e cordas
+          const [pname, slots] = BY_SIG[s.sig][s.pat], sg = sigOf(s.sig), pr0 = withProg ? PROGRESSIONS.find((x) => x.id === s.prog) : null;
+          bs = { sig: s.sig, sub: sg.sub, chord: (withProg ? (s.prog === 'custom' ? s.custom?.[0] : pr0?.chords?.[0]) : s.chord) || 'Em', bpm: s.bpm, bars: 4, name: `${pname} (meu)`, cells: [...slots].map((ch) => ({ dir: ch, strings: [0, 1, 2, 3, 4, 5] })) };
+          tab = 'builder'; shell();
+        }
         else if ('go' in b.dataset) {
           const sg = sigOf(s.sig), [pname, slots] = BY_SIG[s.sig][s.pat], pr = s.prog === 'custom' && s.custom ? { id: 'custom-' + s.custom.join('_'), name: 'Minha progressão', chords: s.custom } : PROGRESSIONS.find((p) => p.id === s.prog);
           if (withProg) { try { await ensureShapes(pr.chords); } catch (err) { app.toast(err.message); return; } }
+          const mine = withProg && s.mine ? savedPats().find((x) => x.name === s.mine) : null;
+          if (mine) { launch(root, cellsProgScore(mine, pr.chords, s.bars, s.bpm), {}, { guide: s.guide }); return; }
           const score = strumScore({ id: `rhythm-${withProg ? 'prog' : 'pat'}-${s.sig}-${slots}-${withProg ? s.prog : s.chord}`.replace(/[^\w-]/g, '_'), title: withProg ? `${pname} · ${pr.name}` : `${pname} · ${s.chord}`, technique: withProg ? 'chord-change' : 'rhythm', level: 2, bpm: s.bpm, chords: withProg ? pr.chords : [s.chord], slots, bars: s.bars, beatsPerBar: sg.beats, sub: sg.sub });
           const host = root; launch(host, score, {}, { guide: s.guide });
         }
       };
       root.oninput = (e) => { if (e.target.id === 'bpm') { s.bpm = +e.target.value; root.querySelector('#bv').textContent = s.bpm; e.target.style.setProperty('--p', ((e.target.value - e.target.min) / (e.target.max - e.target.min)) * 100 + '%'); } };
-      root.onchange = (e) => { if (e.target.id === 'chord') s.chord = e.target.value; if (e.target.id === 'guide') s.guide = e.target.checked; };
+      root.onchange = (e) => { if (e.target.id === 'chord') s.chord = e.target.value; if (e.target.id === 'guide') s.guide = e.target.checked; if (e.target.id === 'mine') s.mine = e.target.value; };
       return () => { root.onclick = root.oninput = root.onchange = null; };
     }
 
