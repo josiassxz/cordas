@@ -44,7 +44,7 @@ export default {
       if (a) { a.getFloatTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v)); }
       const bar = el.querySelector('#monBar'), txt = el.querySelector('#monTxt'), info = el.querySelector('#monInfo'); if (!bar) return;
       bar.style.width = `${Math.min(100, peak * 140)}%`; txt.textContent = peak > 0.01 ? 'SOM SAINDO' : 'silêncio'; txt.style.color = peak > 0.01 ? 'var(--accent)' : 'var(--tx-3)';
-      info.textContent = `áudio: ${ctx?.state || 'não iniciado'} · metrônomos vivos: ${Transport.liveCount} · exercício: ${app.practice?.current ? app.practice.current.state : 'nenhum'} · latência de saída: ${Math.round(((ctx?.outputLatency || 0) + (ctx?.baseLatency || 0)) * 1000)} ms`;
+      info.textContent = `áudio: ${ctx?.state || 'não iniciado'} · metrônomos vivos: ${Transport.liveCount}${Transport.liveCount ? ' [' + Transport.live().map((x) => `${x.state} ${Math.round(x.bpm)}bpm`).join(', ') + ']' : ''} · exercício: ${app.practice?.current ? app.practice.current.state : 'nenhum'} · latência de saída: ${Math.round(((ctx?.outputLatency || 0) + (ctx?.baseLatency || 0)) * 1000)} ms`;
     }, 100);
 
     const line = (t, txt) => { log.push({ t, txt }); if (log.length > 2000) log.shift(); const d = document.createElement('div'); d.textContent = `${(t / 1000).toFixed(3)}s  ${txt}`; $log.prepend(d); while ($log.childElementCount > 120) $log.lastChild.remove(); };

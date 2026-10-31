@@ -11,6 +11,7 @@ export class Transport extends EventTarget {
   static pauseAll(except = null) { for (const t of [...LIVE]) if (t !== except) t.pause(); }
   static stopAll() { for (const t of [...LIVE]) t.stop(); }
   static get liveCount() { return LIVE.size; }
+  static live() { return [...LIVE].map((t) => ({ bpm: t.bpm, state: t.state, origem: t.origin })); }   // diagnóstico: quem criou cada relógio vivo
   constructor(audio, o = {}) {
     super();
     this.audio = audio;
@@ -27,6 +28,7 @@ export class Transport extends EventTarget {
     this.subClick = !!o.subClick;          // clique suave nas subdivisões
     this.volume = o.volume ?? 1;
     this.pos0 = 0; this.t0 = 0; this.nextTick = 0; this.timer = null; this.out = null; this.guideOut = null;
+    this.origin = (new Error().stack || '').split('\n').slice(2, 6).map((l) => l.trim().replace(/https?:\/\/[^/]+/, '')).join(' < ');   // quem criou este relógio (para achar metrônomo fantasma)
     this.sched = [];   // cliques já agendados (cancelável quando o andamento muda)
   }
 

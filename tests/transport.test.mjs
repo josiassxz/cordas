@@ -98,3 +98,17 @@ test('pausar/parar qualquer relógio silencia todos os metrônomos vivos', () =>
   Transport.stopAll(); assert.equal(Transport.liveCount, 0); assert.equal(c.state, 'stopped');
   a.start({ countInBeats: 0 }); a.start({ countInBeats: 0 }); a.pause(); assert.equal(Transport.liveCount, 0, 'start repetido não deixa relógio órfão'); Transport.stopAll();
 });
+
+test('diagnóstico: relógio vivo informa a origem; estando "pausado", update() do Runner pausa qualquer relógio extra', async () => {
+  const { Runner } = await import('../js/engine/runner.js');
+  const mk = () => new Transport({ context: { currentTime: 0 }, master: {} }, { silent: true, clock: () => 0 });
+  const stray = mk(); stray.start({ countInBeats: 0 });
+  assert.ok(Transport.live().length === 1 && typeof Transport.live()[0].origem === 'string');
+  const r = new Runner({ guitar: null, audio: null, settings: () => ({}), clock: () => 0, silent: true }, { id: 'x', title: 'x', bpm: 80, lengthBeats: 4, events: [{ beat: 0, notes: [{ string: 0, fret: 0 }] }] }, { autoUpdate: false, countIn: 0 });
+  r.start(); r.pause();
+  assert.equal(stray.state, 'paused', 'pausar o exercício já pausa o relógio extra');
+  stray.start({ countInBeats: 0 }); assert.equal(Transport.liveCount, 1);   // um relógio extra renasce enquanto o exercício segue pausado...
+  r.update();                                                              // ...e o próximo ciclo do Runner o silencia
+  assert.equal(Transport.liveCount, 0);
+  r.destroy(); Transport.stopAll();
+});

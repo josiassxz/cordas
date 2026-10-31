@@ -138,6 +138,8 @@ export class Runner {
 
   // ---------- laço principal ----------
   update() {
+    // Pausado = silêncio TOTAL: se algum outro relógio estiver tocando, é pausado na hora (e registrado no console para diagnóstico)
+    if (this._state === 'paused' && Transport.liveCount) { console.warn('[corda] metrônomo extra vivo durante a pausa; pausando.', Transport.live()); Transport.pauseAll(); }
     if (this.finished || this.mode === 'wait' || !this.transport || !['running', 'countin'].includes(this._state)) return;
     const now = performance.now(); this.activeMs += Math.min(100, now - this.lastTick); this.lastTick = now;
     const pos = this.position(), len = this.score.lengthBeats;
