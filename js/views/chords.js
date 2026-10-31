@@ -6,7 +6,7 @@ import {
   expectedPositions, matchVoicing, diffByString,
 } from '../music/chords.js';
 import { chordDiagram } from '../ui/chord-diagram.js';
-import { pickChords } from '../ui/chord-picker.js';
+import { pickChords, itemLabel, toItem } from '../ui/chord-picker.js';
 import { PROGRESSION_PRESETS, PAIR_PRESETS, POSITION_PRESETS, DRILL_KINDS, buildDrill } from '../content/chord-drills.js';
 
 const ESSENTIALS = ['Em', 'Am', 'E', 'A', 'D', 'C', 'G', 'Dm'];
@@ -23,7 +23,7 @@ export default {
       mode: ['library', 'listen', 'drills'].includes(params.mode) ? params.mode : 'library',
       symbol: parseSymbol(params.symbol) ? symbolOf(...Object.values(parseSymbol(params.symbol))) : (sessionStorage.getItem('corda.chord') || 'Em'),
       vi: +params.v || 0, root: null, cat: null, q: '', diff: null, tag: null, favOnly: false,
-      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'] },
+      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'].map(toItem) },
     };
     const parsed = parseSymbol(S.symbol) || { root: 4, quality: 'min' };
     S.root = parsed.root;
@@ -223,7 +223,7 @@ export default {
       try {
         if (S.drillKind === 'pair') return buildDrill('pair', { a: d.a, b: d.b, ...o });
         if (S.drillKind === 'progression') { const p = PROGRESSION_PRESETS[d.preset % PROGRESSION_PRESETS.length]; return buildDrill('progression', { symbols: p.symbols, title: `Progressão ${p.name}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) }); }
-        if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `Minha sequência: ${d.custom.join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
+        if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `Minha sequência: ${d.custom.map(itemLabel).join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         if (S.drillKind === 'positions') return buildDrill('positions', { symbol: d.symbol, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         return buildDrill('voicings', { symbol: d.symbol, ...o });
       } catch (e) { return { error: e.message }; }
@@ -233,7 +233,7 @@ export default {
       const kind = DRILL_KINDS.find((k) => k.id === S.drillKind);
       const picker = S.drillKind === 'pair' ? `<div class="row wrap">${PAIR_PRESETS.map(([a, b]) => `<button class="chip ${d.a === a && d.b === b ? 'on' : ''}" data-pair="${a}|${b}">${a} ↔ ${b}</button>`).join('')}</div>
           <div class="row"><label class="field grow"><span>Acorde A</span><input id="dA" type="text" value="${esc(d.a)}"></label><label class="field grow"><span>Acorde B</span><input id="dB" type="text" value="${esc(d.b)}"></label></div>`
-        : S.drillKind === 'custom' ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(c)}</span>`).join('<span class="dim">→</span>')}</div>
+        : S.drillKind === 'custom' ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(itemLabel(c))}</span>`).join('<span class="dim">→</span>')}</div>
             <button class="btn primary" data-act="pickseq">${icon('plus') || ''} Escolher / editar acordes…</button><small class="dim">Qualquer acorde da biblioteca, com quantos você quiser.</small></div>`
         : S.drillKind === 'progression' ? `<div class="ch-cards" style="grid-template-columns:1fr">${PROGRESSION_PRESETS.map((p, i) => `<button class="ch-prog ${d.preset === i ? 'on' : ''}" data-preset="${i}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}<button class="ch-prog" data-act="pickseq"><b>＋ Montar a minha</b><small>Escolha os acordes numa lista visual</small></button></div>`
         : `<div class="row wrap">${POSITION_PRESETS.map((s) => `<button class="chip ${d.symbol === s ? 'on' : ''}" data-dsym="${s}">${s}</button>`).join('')}</div>

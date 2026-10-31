@@ -139,7 +139,7 @@ export default {
         if (b.dataset.sig) { s.sig = b.dataset.sig; s.pat = 0; draw(); }
         else if (b.dataset.pat) { s.pat = +b.dataset.pat; draw(); }
         else if (b.dataset.prog) { s.prog = b.dataset.prog; draw(); }
-        else if ('pickprog' in b.dataset) { pickChords({ title: 'Monte sua progressão (um acorde por compasso)', initial: s.custom || [], min: 2, max: 16, presets: PROGRESSIONS.map((p) => ({ name: p.name, symbols: p.chords })) }).then((seq) => { if (seq) { s.custom = seq; s.prog = 'custom'; draw(); } }); }
+        else if ('pickprog' in b.dataset) { pickChords({ title: 'Monte sua progressão (um acorde por compasso)', initial: s.custom || [], min: 2, max: 16, presets: PROGRESSIONS.map((p) => ({ name: p.name, symbols: p.chords })) }).then((seq) => { if (seq) { s.custom = seq.map((x) => x.symbol); s.prog = 'custom'; draw(); } }); }
         else if (b.dataset.bars) { s.bars = +b.dataset.bars; draw(); }
         else if ('go' in b.dataset) {
           const sg = sigOf(s.sig), [pname, slots] = BY_SIG[s.sig][s.pat], pr = s.prog === 'custom' && s.custom ? { id: 'custom-' + s.custom.join('_'), name: 'Minha progressão', chords: s.custom } : PROGRESSIONS.find((p) => p.id === s.prog);

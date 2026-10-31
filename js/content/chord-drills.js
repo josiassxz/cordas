@@ -52,7 +52,7 @@ export function changeDrill(a, b, o = {}) {
 }
 // Progressão de acordes (símbolos)
 export function progressionDrill(symbols, o = {}) {
-  const seq = symbols.map((s) => pickVoicing(s, o.prefer));
+  const seq = symbols.map((s) => (typeof s === 'string' ? pickVoicing(s, o.prefer) : (s.vid && voicingsOf(s.symbol).find((v) => v.id === s.vid)) || pickVoicing(s.symbol, o.prefer)));
   return { sequence: seq, score: drillFromVoicings(seq, { title: o.title || `Progressão ${seq.map((v) => v.name).join(' – ')}`, ...opts({ rounds: 2, ...o }) }) };
 }
 // Mesmo acorde subindo pelas posições do braço e voltando
