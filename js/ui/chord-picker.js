@@ -3,7 +3,7 @@
 // arrastando e soltando (também dá para arrastar um acorde da grade para dentro dela) ou com ‹ ›.
 //   const seq = await pickChords({ title, initial: ['G', {symbol:'C', vid:'C@…'}], min: 2, max: 16, presets: [{name, symbols}] })
 //   -> [{ symbol, vid|null }, …]  (vid = digitação escolhida; null = a mais fácil) ou null se cancelar.
-import { allSymbols, searchSymbols, parseSymbol, voicingsOf, inversionsOf, QUALITIES_BY_ID, CATEGORIES, displayName } from '../music/chords.js';
+import { allSymbols, searchSymbols, parseSymbol, voicingsOf, inversionsOf, symbolOf, QUALITIES_BY_ID, CATEGORIES, displayName } from '../music/chords.js';
 import { chordDiagram } from './chord-diagram.js';
 
 const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -66,6 +66,13 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       }).join('') : '<div class="empty">Nada com esse filtro.</div>') + (syms.length > part.length ? `<button type="button" class="btn cpk-moreall" data-showmore>Mostrar mais (${syms.length - part.length})</button>` : '');
       const c = $('#cpkCount'); if (c) c.textContent = `${syms.length} acordes`;
     }
+    // Todos os acordes da mesma nota (G, Gm, G7, Gmaj7, Gsus4…) + os invertidos com baixo (G/B, G/D…): as "variações" do G.
+    function relatedOf(symbol) {
+      const p = parseSymbol(symbol), rel = [];
+      for (const q of Object.keys(QUALITIES_BY_ID)) rel.push(symbolOf(p.root, q));
+      for (const q of ['maj', 'min', '7', 'maj7', 'm7']) for (const v of inversionsOf(symbolOf(p.root, q))) if (!rel.includes(v.symbol)) rel.push(v.symbol);
+      return rel;
+    }
     function paintTabs() {
       const t = $('#cpkTabs'), inVar = !!F.open;
       const p = F.open && parseSymbol(F.open);
@@ -79,7 +86,9 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       const curId = cur ? (cur.vid || easiest(F.open)?.id) : null;
       browse.hidden = true; box.hidden = false;
       box.innerHTML = `<div class="cpk-varhead"><b>${vs.length} digitações de ${esc(displayName(p.root, p.quality, p.bass))}</b><span class="dim">${F.sel != null ? 'Toque na que você quer — ela substitui o acorde ' + (F.sel + 1) + ' da sequência.' : 'Toque na que você quer para adicionar à sequência.'}</span><button type="button" class="btn ghost sm" data-varclose>← Voltar à lista</button></div>
-        <div class="cpk-varrow big">${vs.map((v) => `<button type="button" class="cpk-vtile ${v.id === curId ? 'cur' : ''}" data-addv="${esc(F.open)}|${esc(v.id)}" aria-label="${F.sel != null ? 'Usar' : 'Adicionar'} ${esc(F.open)}, ${esc(voicingLabel(v))}">${chordDiagram(v, { size: 'sm' })}<small>${esc(voicingLabel(v))}</small><small class="dim num">${v.frets.map((f) => (f < 0 ? 'x' : f)).join(' ')}</small>${v.id === curId ? '<em>atual</em>' : ''}</button>`).join('')}</div>`;
+        <div class="cpk-varrow big" id="cpkVoicings">${vs.map((v) => `<button type="button" class="cpk-vtile ${v.id === curId ? 'cur' : ''}" data-addv="${esc(F.open)}|${esc(v.id)}" aria-label="${F.sel != null ? 'Usar' : 'Adicionar'} ${esc(F.open)}, ${esc(voicingLabel(v))}">${chordDiagram(v, { size: 'sm' })}<small>${esc(voicingLabel(v))}</small><small class="dim num">${v.frets.map((f) => (f < 0 ? 'x' : f)).join(' ')}</small>${v.id === curId ? '<em>atual</em>' : ''}</button>`).join('')}</div>
+        <div class="cpk-varhead rel"><b>Mais acordes de ${esc(displayName(p.root, 'maj'))}</b><span class="dim">Outras famílias e acordes com baixo diferente — toque para ${F.sel != null ? 'trocar' : 'adicionar'}.</span></div>
+        <div class="cpk-varrow big rel">${relatedOf(F.open).map((sym) => { const pp = parseSymbol(sym), v = easiest(sym); return `<button type="button" class="cpk-vtile ${sym === F.open ? 'cur' : ''}" data-rel="${esc(sym)}" aria-label="${F.sel != null ? 'Trocar por' : 'Adicionar'} ${esc(sym)}">${v ? chordDiagram(v, { size: 'sm' }) : ''}<small>${esc(displayName(pp.root, pp.quality, pp.bass))}</small><small class="dim">${voicingsOf(sym).length} var.</small></button>`; }).join('')}</div>`;
     }
     function paintSeq() {
       $('#cpkN').textContent = `${seq.length}/${max}`;
@@ -96,6 +105,10 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       const d = b.dataset;
       if (d.add) add({ symbol: d.add, vid: null });
       else if (d.addv) { const [symbol, vid] = d.addv.split('|'); if (F.sel != null && seq[F.sel]) { seq[F.sel] = { symbol, vid }; paintSeq(); paintVar(); } else add({ symbol, vid }); }
+      else if (d.rel) {
+        if (F.sel != null && seq[F.sel]) { seq[F.sel] = { symbol: d.rel, vid: null }; F.open = d.rel; paintSeq(); paintVar(); }
+        else { add({ symbol: d.rel, vid: null }); }
+      }
       else if (d.var) { F.open = d.var; F.sel = null; paintVar(); paintSeq(); }
       else if (d.tab === 'grid' || 'varclose' in d) { F.open = null; F.sel = null; paintGrid(); paintVar(); paintSeq(); }
       else if ('showmore' in d) { F.shown += PAGE; paintGrid(); }

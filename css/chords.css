@@ -114,3 +114,6 @@
 .cpk-step{cursor:pointer}
 .cpk-varrow.big{flex-wrap:wrap;overflow:visible}.cpk-varrow.big .cpk-vtile{min-width:104px;position:relative}
 .cpk-vtile.cur{border-color:var(--accent);background:rgba(245,165,36,.12)}.cpk-vtile em{position:absolute;top:4px;right:6px;font-style:normal;font-size:10px;color:var(--accent);font-weight:700}
+
+.cpk-varhead.rel{margin-top:14px}
+.cpk-var{max-height:52vh;overflow:auto}
