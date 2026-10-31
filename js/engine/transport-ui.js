@@ -76,7 +76,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
   // segurar − / + repete (ajuste rápido do andamento com a linha do tempo andando)
   let hold = null;
   host.addEventListener('pointerdown', (e) => {
-    const b = e.target.closest('[data-a=bpm-],[data-a=bpm+]'); if (!b) return;
+    const b = e.target.closest('[data-a="bpm-"],[data-a="bpm+"]'); if (!b) return;
     const d = b.dataset.a === 'bpm+' ? 1 : -1;
     clearInterval(hold); const t0 = setTimeout(() => { hold = setInterval(() => { run.setBpm(run.bpm + d * 2); paint(); }, 90); }, 420);
     const end = () => { clearTimeout(t0); clearInterval(hold); window.removeEventListener('pointerup', end); };
