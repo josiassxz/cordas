@@ -101,7 +101,7 @@ test('rampa de BPM sobe a cada passada até o máximo', () => {
 
 test('modo esperar: erra, tenta de novo, avança só ao acertar; pausa bloqueia', () => {
   const evs = [{ beat: 0, notes: [{ string: 4, fret: 0 }] }, { beat: 1, notes: [{ string: 3, fret: 0 }] }];
-  const { r, hit, guitar, records } = rig(evs, { score: { mode: 'wait', lengthBeats: 4 }, opts: { repeat: 1 } });
+  const { r, hit, guitar, records } = rig(evs, { score: { mode: 'wait', lengthBeats: 4 }, opts: { repeat: 1, wait: true } });
   r.start(); assert.equal(r.mode, 'wait');
   const strum = () => guitar.emit('strum', { t: performance.now(), notes: [], dir: 'S', count: 1 });
   hit(3); strum();                              // corda errada
@@ -149,4 +149,12 @@ test('ponta a ponta com MIDI simulado (guitar.simulateStrum) em tempo real', asy
   assert.equal(sum.expected, 2); assert.ok(sum.accuracy >= 75, `acurácia ${sum.accuracy}`);
   assert.equal(sum.stringsOk, 12); assert.equal(records.length, 1);
   r.destroy();
+});
+
+test('score "esperar acerto" agora roda no relógio (BPM configurado) e aceita o acerto em qualquer ponto do trecho', () => {
+  const evs = [{ beat: 0, dur: 4, notes: [{ string: 4, fret: 0 }], check: { strings: true, pitch: true, timing: false } }];
+  const { r, at, hit } = rig(evs, { score: { mode: 'wait', lengthBeats: 4 }, opts: { repeat: 1, countIn: 0 } });
+  r.start(); assert.equal(r.mode, 'timed');
+  at(2.5); hit(4); at(4.2); assert.equal(r.summary().miss, 0);
+  assert.ok(r.position() > 2, 'o relógio anda');
 });

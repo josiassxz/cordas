@@ -1,6 +1,7 @@
 // Ritmo: metrônomo visual/sonoro, padrões, acordes no ritmo (v1), construtor por corda e trilha de níveis.
 import { esc, icon, paintIcons, clamp } from '../core/dom.js';
 import { Transport } from '../engine/transport.js';
+import { Lane } from '../engine/lane.js';
 import { TIME_SIGNATURES, SUBDIVISIONS, STRUM_PATTERNS, PROGRESSIONS, shapeOf, allShapes, upgradeShapes } from '../content/patterns.js';
 import { strumScore } from '../content/techniques.js';
 import { normalizeScore } from '../engine/score.js';
@@ -55,6 +56,7 @@ export default {
         <div class="rt-bpm"><button class="btn icon lg" data-b="-5" aria-label="Diminuir 5 BPM">−</button><div><div class="big-num num" id="bpmv">${s.bpm}</div><small class="dim" id="bpmsub">BPM</small></div><button class="btn icon lg" data-b="5" aria-label="Aumentar 5 BPM">+</button></div>
         <input type="range" id="bpmr" min="30" max="240" value="${s.bpm}" aria-label="BPM">
         <div class="row wrap center" style="margin:6px 0 2px"><button class="play-lg" data-a="toggle" aria-label="Iniciar"></button><button class="btn icon" data-a="restart" aria-label="Reiniciar" title="Reiniciar">${icon('restart')}</button><button class="btn" data-a="tap">Tap tempo</button></div>
+        <div class="pr-hw lane" id="mlane" style="height:260px;max-width:none"><canvas aria-label="Pista do metrônomo"></canvas></div>
         <div class="rt-opts">
           <div class="field"><span class="h3">Compasso</span><div class="seg" id="sigs">${TIME_SIGNATURES.map((t) => `<button data-sig="${t.id}" aria-pressed="${t.id === s.sig}" title="${t.note}">${t.label}</button>`).join('')}</div></div>
           <div class="field"><span class="h3">Subdivisão</span><div class="seg" id="subs">${SUBDIVISIONS.map((t) => `<button data-sub="${t.id}" aria-pressed="${t.id === s.sub}">${t.label}</button>`).join('')}</div></div>
@@ -67,11 +69,10 @@ export default {
       const paintBpm = () => { q('#bpmv').textContent = s.bpm; q('#bpmr').value = s.bpm; q('#bpmsub').textContent = s.speed !== 1 ? `BPM · efetivo ${Math.round(s.bpm * s.speed)}` : 'BPM'; store.set('rhythm.bpm', s.bpm); };
       function build() {
         const was = tr?.state; tr?.stop();
-        tr = new Transport(app.audio, { bpm: s.bpm, speed: s.speed, beatsPerBar: sg().beats, subdivision: s.sub, click: true });
+        tr = new Transport(app.audio, { bpm: s.bpm, speed: s.speed, beatsPerBar: sg().beats, subdivision: s.sub, click: true, subClick: s.subClick });
         tr.addEventListener('tick', (e) => {
           const d = e.detail; queue.push(d);
           if (d.isBar && d.beat > 0 && s.accel && ++bars % 4 === 0) { s.bpm = Math.min(240, s.bpm + 2); tr.setBpm(s.bpm); paintBpm(); }
-          if (!d.isBeat && s.subClick) app.audio.click(d.time, false, true);
         });
         tr.addEventListener('state', paintPlay);
         drawDots(); bars = 0; active = -1; queue = [];
@@ -86,6 +87,11 @@ export default {
         }
         raf = requestAnimationFrame(loop);
       };
+      const mlane = new Lane(q('#mlane canvas'), () => ({
+        score: { beatsPerBar: sg().beats, subdivision: s.sub, lengthBeats: sg().beats, bpm: s.bpm, events: Array.from({ length: sg().beats }, (_, beat) => ({ beat, kind: 'strum', strum: { dir: 'D', strings: [0, 1, 2, 3, 4, 5] }, check: { strings: true }, dur: 1 })) },
+        pos: tr ? tr.position() : 0, results: new Map(), passes: Infinity, state: tr?.state === 'paused' ? 'paused' : 'running',
+      }));
+      mlane.start();
       build(); loop();
       root.addEventListener('click', (e) => {
         const b = e.target.closest('button'); if (!b) return;
@@ -98,11 +104,11 @@ export default {
         else if (b.dataset.spd) { s.speed = +b.dataset.spd; root.querySelectorAll('[data-spd]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); tr.setSpeed(s.speed); paintBpm(); }
       });
       q('#bpmr').addEventListener('input', (e) => { s.bpm = +e.target.value; tr.setBpm(s.bpm); paintBpm(); });
-      q('#subclick').addEventListener('change', (e) => { s.subClick = e.target.checked; });
+      q('#subclick').addEventListener('change', (e) => { s.subClick = e.target.checked; if (tr) tr.subClick = s.subClick; });
       q('#accel').addEventListener('change', (e) => { s.accel = e.target.checked; });
       const key = (e) => { if (e.target.closest?.('input,select,textarea,dialog')) return; if (e.key === 'p' || e.key === 'P') { e.preventDefault(); q('[data-a=toggle]').click(); } };
       document.addEventListener('keydown', key);
-      return () => { cancelAnimationFrame(raf); tr?.stop(); document.removeEventListener('keydown', key); };
+      return () => { cancelAnimationFrame(raf); mlane.stop(); tr?.stop(); document.removeEventListener('keydown', key); };
     }
 
     // ================= Padrões / Acordes no ritmo =================

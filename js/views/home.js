@@ -36,7 +36,7 @@ export default {
           <div class="hm-stat"><span class="h3">Sequência</span><b class="big-num num">${streak}</b><span class="muted">${streak === 1 ? 'dia seguido' : 'dias seguidos'}</span></div>
           <div class="hm-stat"><span class="h3">Últimos 7 dias</span><div class="hm-week" role="img" aria-label="Minutos praticados nos últimos 7 dias">${bars.map((b, i) => `<i class="${i === 6 ? 'on' : ''}" style="height:${Math.max(4, (b.minutes / maxM) * 100)}%" title="${b.day}: ${Math.round(b.minutes)} min"></i>`).join('')}</div></div>
         </section>
-        <nav class="hm-links" aria-label="Atalhos"><button data-go="chords">Acordes</button><button data-go="rhythm">Ritmo</button><button data-go="train">Treinar</button><button data-go="songs">Músicas</button><button data-go="tones">Tones</button><button data-go="progress">Progresso</button></nav>
+        <nav class="hm-links" aria-label="Atalhos"><button data-go="chords">Acordes</button><button data-go="rhythm">Ritmo</button><button data-go="train">Treinar</button><button data-go="songs">Músicas</button><button data-go="progress">Progresso</button></nav>
       </div>`;
     };
     render();

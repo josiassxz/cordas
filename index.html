@@ -15,7 +15,6 @@
 <link rel="stylesheet" href="css/chords.css">
 <link rel="stylesheet" href="css/rhythm.css">
 <link rel="stylesheet" href="css/songs.css">
-<link rel="stylesheet" href="css/tones.css">
 <link rel="stylesheet" href="css/progress.css">
 <link rel="stylesheet" href="css/lab.css">
 </head>
@@ -68,6 +67,9 @@
     <label class="field"><span class="row between">Desvio de afinação (semitons) <output id="offOut" class="num"></output></span>
       <input type="range" id="pitchOffset" min="-3" max="3" step="1">
       <small>Se o braço mostra trastes errados (ex.: −1), calibre aqui ou em Laboratório.</small></label>
+    <div class="field"><span class="row between">Sincronizar com a guitarra</span>
+      <button type="button" class="btn" id="syncBtn">Medir meu atraso…</button>
+      <small>Toca um clique e mede quanto você chega depois dele; sugere a compensação de latência.</small></div>
     <label class="field"><span class="row between">Tamanho do braço <output id="stageOut" class="num"></output></span>
       <input type="range" id="stageScale" min="100" max="300" step="10">
       <small>Também dá para usar A− / A+ ao lado do braço.</small></label>

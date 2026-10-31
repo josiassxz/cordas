@@ -2,6 +2,7 @@
 import { $, $$, icon, paintIcons, toast } from './core/dom.js';
 import { Fretboard, bindGuitar } from './ui/fretboard.js';
 import { bindDiagramPress } from './ui/chord-diagram.js';
+import { openSync } from './engine/sync.js';
 import { INSTRUMENTS, STANDARD, detectChord, noteName, setFlats } from './music/theory.js';
 
 export function startShell(app, views) {
@@ -54,6 +55,8 @@ export function startShell(app, views) {
   app.stage = board;
   bindGuitar(board, guitar);
   bindDiagramPress(guitar);
+  app.openSync = () => openSync(app);
+  document.addEventListener('corda:sync', () => openSync(app));
   guitar.addEventListener('notes', (e) => {
     const act = e.detail.active, notes = [...act.entries()].sort((a, b) => a[0] - b[0]).map(([, n]) => n);
     const ch = notes.length >= 2 ? detectChord(notes) : null;
@@ -119,6 +122,7 @@ export function startShell(app, views) {
   $('#stageScale').addEventListener('input', (e) => { applyScale(+e.target.value); fillRange(e.target); });
   $('#stageFrets').addEventListener('input', (e) => { applyFrets(+e.target.value); fillRange(e.target); });
   $('#sustainMs').addEventListener('input', (e) => { guitar.sustainMs = +e.target.value; store.set('settings.sustainMs', +e.target.value); $('#susOut').textContent = (e.target.value / 1000).toFixed(1) + ' s'; fillRange(e.target); });
+  $('#syncBtn').addEventListener('click', () => { dlg.close(); openSync(app); });
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });
   $('#synth').addEventListener('change', (e) => store.set('settings.synth', e.target.checked));

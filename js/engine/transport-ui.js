@@ -10,11 +10,14 @@ export function mountTransport(host, run, { keys = true } = {}) {
     <button class="play" data-a="toggle" aria-label="Iniciar"></button>
     <button class="btn icon" data-a="restart" aria-label="Reiniciar" title="Reiniciar (R)">${icon('restart')}</button>
     <button class="btn icon" data-a="stop" aria-label="Parar" title="Parar e ver o resultado">${icon('stop')}</button>
-    <div class="stepper" data-r="bpm" ${run.canBpm ? '' : 'hidden'}><button class="btn icon sm" data-a="bpm-" aria-label="Diminuir BPM">−</button><b class="num" data-r="bpmv"></b><small>BPM</small><button class="btn icon sm" data-a="bpm+" aria-label="Aumentar BPM">+</button></div>
+    <div class="stepper" data-r="bpm"><button class="btn icon sm" data-a="bpm-" aria-label="Diminuir BPM">−</button><b class="num" data-r="bpmv"></b><small>BPM</small><button class="btn icon sm" data-a="bpm+" aria-label="Aumentar BPM">+</button></div>
+    <input type="range" class="pr-bpmr" data-a="bpmr" min="30" max="240" step="1" aria-label="BPM (muda ao vivo)" title="BPM — muda ao vivo, sem parar a linha do tempo">
     <div class="seg" role="group" aria-label="Velocidade">${SPEEDS.map((s) => `<button data-speed="${s}" aria-pressed="false">${s * 100}%</button>`).join('')}</div>
     <div class="seg" role="group" aria-label="Repetir">${REPEATS.map(([v, l]) => `<button data-repeat="${v}" aria-pressed="false" title="Repetir">${l}</button>`).join('')}</div>
     <label class="chip pr-toggle"><input type="checkbox" data-a="guide"> Guia sonoro</label>
-    ${run.mode === 'wait' ? '' : '<label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>'}
+    <button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Sincronizar</button>
+    <label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>
+    <label class="chip pr-toggle" title="Clique suave também nas subdivisões (e, &, a)"><input type="checkbox" data-a="subclick"> Subdivisões</label>
     <div class="pr-prog"><div class="progress" role="progressbar" aria-label="Progresso" aria-valuemin="0" aria-valuemax="100"><i></i></div><span class="num dim" data-r="lap"></span></div>
   </div>`;
   const $ = (s) => host.querySelector(s), play = $('.play');
@@ -28,6 +31,8 @@ export function mountTransport(host, run, { keys = true } = {}) {
     const clk = $('[data-a=click]'); if (clk) clk.checked = run.click;
     const base = run.canBpm && run.speed !== 1 ? ` · base ${run.bpm}` : '';
     $('[data-r=bpm] small').textContent = 'BPM' + base;
+    const br = $('[data-a=bpmr]'); if (br && document.activeElement !== br) { br.value = run.bpm; br.style.setProperty('--p', ((run.bpm - br.min) / (br.max - br.min)) * 100 + '%'); }
+    const sc = $('[data-a=subclick]'); if (sc) sc.checked = !!run.subClick;
   };
   const prog = () => {
     const f = run.progress, bar = $('.progress'); bar.firstElementChild.style.width = `${Math.round(f * 100)}%`; bar.setAttribute('aria-valuenow', Math.round(f * 100));
@@ -38,13 +43,24 @@ export function mountTransport(host, run, { keys = true } = {}) {
     if (b.dataset.a === 'toggle') run.toggle();
     else if (b.dataset.a === 'restart') run.restart();
     else if (b.dataset.a === 'stop') run.stop();
+    else if (b.dataset.a === 'sync') host.dispatchEvent(new CustomEvent('corda:sync', { bubbles: true }));
     else if (b.dataset.a === 'bpm-') run.setBpm(run.bpm - 5);
     else if (b.dataset.a === 'bpm+') run.setBpm(run.bpm + 5);
     else if (b.dataset.speed) run.setSpeed(+b.dataset.speed);
     else if (b.dataset.repeat) run.setRepeat(b.dataset.repeat === 'loop' || b.dataset.repeat === 'once' ? b.dataset.repeat : +b.dataset.repeat);
     paint();
   });
-  host.addEventListener('change', (e) => { if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
+  host.addEventListener('input', (e) => { if (e.target.dataset.a === 'bpmr') { run.setBpm(+e.target.value); paint(); } });
+  // segurar − / + repete (ajuste rápido do andamento com a linha do tempo andando)
+  let hold = null;
+  host.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('[data-a=bpm-],[data-a=bpm+]'); if (!b) return;
+    const d = b.dataset.a === 'bpm+' ? 1 : -1;
+    clearInterval(hold); const t0 = setTimeout(() => { hold = setInterval(() => { run.setBpm(run.bpm + d * 2); paint(); }, 90); }, 420);
+    const end = () => { clearTimeout(t0); clearInterval(hold); window.removeEventListener('pointerup', end); };
+    window.addEventListener('pointerup', end);
+  });
+  host.addEventListener('change', (e) => { if (e.target.dataset.a === 'subclick') run.setSubClick(e.target.checked); if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
   const offs = [run.on('state', paint), run.on('tempo', paint), run.on('progress', prog), run.on('pass', prog)];
   const key = (e) => {
     if (e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return;

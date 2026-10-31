@@ -2,6 +2,7 @@
 // Também mostra as posições esperadas (e acertos/erros por corda) no braço do palco (app.stage).
 import { Runner } from './runner.js';
 import { Highway } from './highway.js';
+import { Lane } from './lane.js';
 import { mountTransport } from './transport-ui.js';
 import { icon, esc, clamp } from '../core/dom.js';
 import { STANDARD, fretOf } from '../music/theory.js';
@@ -40,19 +41,23 @@ function mountUI(app, run, opts) {
     <div class="pr-head">
       ${opts.onClose ? `<button class="btn ghost sm" data-close>${icon('chev', 'flip')} Voltar</button>` : ''}
       <div class="grow"><div class="h2">${esc(sc.title)}</div>
-        <div class="row wrap" style="gap:6px;margin-top:4px"><span class="chip">${LEVELS[sc.level - 1] || ''}</span>${meta.guide ? '<span class="badge guide">guia</span>' : ''}<span class="chip">${sc.beatsPerBar}/4 · ${sc.mode === 'wait' ? 'sem relógio (espera você)' : 'no tempo'}</span></div></div>
+        <div class="row wrap" style="gap:6px;margin-top:4px"><span class="chip">${LEVELS[sc.level - 1] || ''}</span>${meta.guide ? '<span class="badge guide">guia</span>' : ''}<span class="chip">${sc.beatsPerBar}/4 · ${sc.mode === 'wait' ? 'acerte dentro do trecho' : 'no tempo'}</span></div></div>
       <div class="pr-state muted" aria-live="polite"></div>
     </div>
     ${notes.length ? `<div class="pr-notice"><span class="badge guide">guia</span><div>${notes.map(esc).join(' ')}</div></div>` : ''}
-    <div class="pr-hw"><canvas aria-label="Pista de notas"></canvas><div class="pr-flash" aria-live="polite"></div></div>
-    <div class="pr-needle" aria-hidden="true"><span class="lbl l">cedo</span><span class="lbl r">tarde</span><div class="track"></div><div class="mid"></div><div class="needle"></div></div>
     <div class="pr-bar"></div>
+    <div class="pr-hw"><canvas aria-label="Pista de notas e batidas"></canvas><div class="pr-flash" aria-live="polite"></div></div>
+    <div class="pr-needle" aria-hidden="true"><span class="lbl l">cedo</span><span class="lbl r">tarde</span><div class="track"></div><div class="mid"></div><div class="needle"></div></div>
     <div class="pr-stats num"><span>Acerto <b data-s="acc">–</b></span><span>Perfeitas <b data-s="perfect">0</b></span><span>Boas <b data-s="good">0</b></span><span>No limite <b data-s="ok">0</b></span><span>Perdidas <b data-s="miss">0</b></span><span>Extras <b data-s="extra">0</b></span></div>
     <div class="pr-summary panel" hidden></div>
   </div>`;
   const $ = (s) => host.querySelector(s), flash = $('.pr-flash'), needle = $('.needle'), summary = $('.pr-summary');
   const cv = $('canvas');
-  const hw = new Highway(cv, () => ({ score: run.score, pos: run.position(), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
+  // Ritmo/palhetada: pista vertical de setas descendo. Notas soltas (arpejos, escalas…): a pista horizontal de sempre.
+  const strums = sc.events.filter((e) => e.kind === 'strum').length, notesN = sc.events.filter((e) => e.kind === 'note').length;
+  const vertical = strums > 0 && strums >= notesN;
+  host.querySelector('.pr-hw').classList.toggle('lane', vertical);
+  const hw = new (vertical ? Lane : Highway)(cv, () => ({ score: run.score, pos: run.position(), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
   hw.start();
   const tr = mountTransport($('.pr-bar'), run);
   const counts = { perfect: 0, good: 0, ok: 0, miss: 0, extra: 0 };

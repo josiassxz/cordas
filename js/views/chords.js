@@ -239,13 +239,13 @@ export default {
           <div class="ch-kinds" role="group" aria-label="Tipo de exercício">${DRILL_KINDS.map((k) => `<button class="${S.drillKind === k.id ? 'on' : ''}" data-kind="${k.id}" aria-pressed="${S.drillKind === k.id}"><b>${k.name}</b><small>${k.hint}</small></button>`).join('')}</div>
           ${picker}</aside>
         <section class="ch-detail panel"><header class="ch-head"><div><div class="ch-name" style="font-size:26px">${esc(dr.score?.title || 'Exercício')}</div>
-            <div class="muted">${dr.score ? `${dr.score.lengthBeats} batidas · nível ${dr.score.level} · ${d.mode === 'wait' ? 'espera você acertar' : 'no tempo'}` : ''}</div></div></header>
+            <div class="muted">${dr.score ? `${dr.score.lengthBeats} batidas · nível ${dr.score.level} · ${d.mode === 'wait' ? 'acerte em qualquer momento do trecho' : 'no tempo'}` : ''}</div></div></header>
           ${seq}
           <div class="ch-cfg">
             <label class="field"><span class="row between">Andamento <output class="num">${d.bpm} BPM</output></span><input type="range" id="dBpm" min="40" max="140" step="5" value="${d.bpm}"></label>
             <div class="field"><span>Batidas por acorde</span><div class="seg">${[2, 4, 8].map((n) => `<button class="${d.beatsPerChord === n ? 'on' : ''}" data-bpc="${n}">${n}</button>`).join('')}</div></div>
             <div class="field"><span>Repetições</span><div class="seg">${[2, 4, 8].map((n) => `<button class="${d.rounds === n ? 'on' : ''}" data-rounds="${n}">${n}×</button>`).join('')}</div></div>
-            <div class="field"><span>Modo</span><div class="seg"><button class="${d.mode === 'timed' ? 'on' : ''}" data-dmode="timed">No tempo</button><button class="${d.mode === 'wait' ? 'on' : ''}" data-dmode="wait">Esperar acerto</button></div></div>
+            <div class="field"><span>Modo</span><div class="seg"><button class="${d.mode === 'timed' ? 'on' : ''}" data-dmode="timed">No tempo</button><button class="${d.mode === 'wait' ? 'on' : ''}" data-dmode="wait">Sem exigir a batida</button></div></div>
           </div>
           <div id="drillHost" class="ch-drillhost"></div>
           <div class="row"><button class="btn primary lg" data-act="startdrill" ${ready && !dr.error ? '' : 'disabled'}>${icon('play')} Iniciar exercício</button>

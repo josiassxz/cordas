@@ -57,7 +57,7 @@ add({ id: 'pick-string-cross', title: 'Cruzando cordas: 2-3-2-3', ...T('picking'
 // ---------- troca de acordes ----------
 const PAIRS = [['Em', 'Am', 1], ['G', 'C', 2], ['D', 'A', 2], ['E', 'A', 1], ['C', 'Am', 2], ['G', 'Em', 1], ['D', 'G', 2], ['Am', 'Dm', 2]];
 for (const [a, b, l] of PAIRS) {
-  add({ id: `chg-${a}-${b}-wait`, title: `${a} ⇄ ${b} · sem pressa`, ...T('chord-change', l), tags: ['esperar', a, b], description: `Monte ${a} e ${b} alternando, sem relógio: o exercício espera você acertar.`, tip: 'Mova todos os dedos juntos e confira o diagrama antes de palhetar.' }, changeScore({ chords: [a, b], bpm: 60, level: l, mode: 'wait', cycles: 4 }));
+  add({ id: `chg-${a}-${b}-wait`, title: `${a} ⇄ ${b} · devagar`, ...T('chord-change', l), tags: ['esperar', a, b], description: `Monte ${a} e ${b} alternando, com a linha do tempo andando em BPM baixo: acerte o acorde em qualquer momento do trecho, sem exigir a batida exata.`, tip: 'Mova todos os dedos juntos e confira o diagrama antes de palhetar.' }, changeScore({ chords: [a, b], bpm: 60, level: l, mode: 'wait', cycles: 4 }));
   add({ id: `chg-${a}-${b}`, title: `${a} ⇄ ${b} · no tempo`, ...T('chord-change', l + 1 > 5 ? 5 : l + 1), tags: ['tempo', a, b], description: `Troca de ${a} para ${b} a cada compasso, no metrônomo.`, tip: 'Aumente o BPM só depois de 90% de acerto.' }, changeScore({ chords: [a, b], bpm: 70, level: l + 1, cycles: 4 }));
 }
 add({ id: 'chg-fast-pairs', title: 'Trocas rápidas: Em ⇄ Am a cada 2 batidas', ...T('chord-change', 3), tags: ['rápido'], description: 'Duas trocas por compasso.', tip: 'Dedos "âncora": o 2º dedo de Em e Am fica quase no mesmo lugar.' }, changeScore({ chords: ['Em', 'Am'], strumsPerBar: 2, bpm: 60, level: 3, cycles: 8 }));

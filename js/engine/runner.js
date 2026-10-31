@@ -17,11 +17,12 @@ export class Runner {
   constructor(deps, rawScore, opts = {}) {
     this.deps = deps; this.opts = opts;
     this.score = normalizeScore(rawScore);
-    this.mode = opts.wait === true ? 'wait' : (opts.mode || this.score.mode);
+    // "Esperar acerto" não para mais o relógio: a linha do tempo anda no BPM configurado (o modo 'wait' puro só existe se pedido por opts.wait).
+    this.mode = opts.wait === true ? 'wait' : 'timed';
     this.bpm = opts.bpm ?? this.score.bpm;
     this.speed = opts.speed ?? 1;
     this.passes = parseRepeat(opts.repeat);
-    this.guide = !!opts.guide; this.click = opts.click ?? this.mode !== 'wait';
+    this.guide = !!opts.guide; this.click = opts.click ?? true;
     this.listeners = {}; this._state = 'idle'; this.finished = false;
     this.attach = this.attach.bind(this);
     this.results = new Map(); this.chordResults = []; this.noteLog = []; this.pass = 0; this.activeMs = 0; this.floor = -Infinity;
@@ -49,7 +50,7 @@ export class Runner {
       this.setState('running');
     } else {
       const make = this.deps.makeTransport || ((o) => new Transport(this.deps.audio, o));
-      this.transport = make({ bpm: this.bpm, speed: this.speed, beatsPerBar: this.score.beatsPerBar, subdivision: this.score.subdivision, click: this.click, latencyMs: st.latency ?? 0, clock: this.deps.clock, silent: this.deps.silent });
+      this.transport = make({ bpm: this.bpm, speed: this.speed, beatsPerBar: this.score.beatsPerBar, subdivision: this.score.subdivision, click: this.click, subClick: !!this.subClick, volume: this.clickVolume ?? 1, latencyMs: st.latency ?? 0, clock: this.deps.clock, silent: this.deps.silent });
       const countIn = this.opts.countIn ?? this.score.beatsPerBar;
       this.transport.start({ countInBeats: countIn });
       this.guideLast = -Infinity;
@@ -96,6 +97,8 @@ export class Runner {
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
   setClick(on) { this.click = !!on; if (this.transport) this.transport.click = !!on; }
+  setSubClick(on) { this.subClick = !!on; if (this.transport) this.transport.subClick = !!on; }
+  setClickVolume(v) { this.clickVolume = v; this.transport?.setVolume(v); }
 
   // ---------- posição e progresso ----------
   position() {
@@ -209,8 +212,9 @@ export class Runner {
         const abs = p * len + ev.beat;
         if (abs <= this.guideLast || abs > limit || ev.kind === 'rest') continue;
         const time = t.timeOf(abs);
-        if (ev.kind === 'strum') this.deps.audio?.strum?.(ev.strum.strings.map((s) => noteAt(s, ev.strum.frets?.[s] ?? 0, off)), time, ev.strum.dir, 0.22);
-        else ev.notes.forEach((n) => this.deps.audio?.pluck?.(noteAt(n.string, n.fret, off), time, 0.3));
+        if (!t.guideOut && !t.silent) continue;
+        if (ev.kind === 'strum') this.deps.audio?.strum?.(ev.strum.strings.map((s) => noteAt(s, ev.strum.frets?.[s] ?? 0, off)), time, ev.strum.dir, 0.22, undefined, t.guideOut);
+        else ev.notes.forEach((n) => this.deps.audio?.pluck?.(noteAt(n.string, n.fret, off), time, 0.3, t.guideOut));
       }
     }
     this.guideLast = limit;

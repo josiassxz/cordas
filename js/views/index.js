@@ -6,7 +6,6 @@ const MANIFEST = [
   { id: 'chords', title: 'Acordes', icon: 'chord', order: 30 },
   { id: 'rhythm', title: 'Ritmo', icon: 'wave', order: 40 },
   { id: 'songs', title: 'Músicas', icon: 'music', order: 50 },
-  { id: 'tones', title: 'Tones', icon: 'sliders', order: 60 },
   { id: 'progress', title: 'Progresso', icon: 'chart', order: 70 },
   { id: 'lab', title: 'Laboratório', icon: 'flask', order: 90, group: 'foot' },
 ];

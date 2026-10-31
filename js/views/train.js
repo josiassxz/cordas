@@ -31,7 +31,7 @@ export default {
           <section class="tr-list">
             ${tech ? `<p class="muted tr-blurb">${tech.blurb}</p>` : ''}
             ${items.length ? items.map((e) => `<div class="tr-row" role="button" tabindex="0" data-ex="${e.id}" aria-label="${esc(e.title)}">
-              <div class="grow"><b>${esc(e.title)}</b><div class="tr-meta">${dots(e.level)}<span class="dim">${LEVELS[e.level - 1]}</span><span class="dim">· ${e.bpm} BPM · ${e.bars} comp.</span>${e.mode === 'wait' ? '<span class="chip">espera você</span>' : ''}${e.guide ? '<span class="badge guide">guia</span>' : ''}</div></div>
+              <div class="grow"><b>${esc(e.title)}</b><div class="tr-meta">${dots(e.level)}<span class="dim">${LEVELS[e.level - 1]}</span><span class="dim">· ${e.bpm} BPM · ${e.bars} comp.</span>${e.mode === 'wait' ? '<span class="chip">sem exigir a batida</span>' : ''}${e.guide ? '<span class="badge guide">guia</span>' : ''}</div></div>
               ${best(e.id) != null ? `<span class="best num" title="Melhor resultado">${best(e.id)}%</span>` : ''}
               <button class="btn ghost icon fav ${favs().includes(e.id) ? 'on' : ''}" data-favbtn="${e.id}" aria-label="Favoritar ${esc(e.title)}" aria-pressed="${favs().includes(e.id)}">${icon('heart')}</button>
             </div>`).join('') : '<div class="empty">Nenhum exercício com esses filtros.</div>'}

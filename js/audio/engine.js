@@ -118,17 +118,17 @@ export class AudioEngine {
     return b;
   }
 
-  pluck(midi, time = this.context.currentTime, gain = 0.5) {
+  pluck(midi, time = this.context.currentTime, gain = 0.5, dest = this.instrumentBus) {
     const ctx = this.context, s = ctx.createBufferSource(), g = ctx.createGain();
     s.buffer = this.voiceBuffer(midi); g.gain.value = gain;
-    s.connect(g).connect(this.instrumentBus);
+    s.connect(g).connect(dest || this.instrumentBus);
     s.start(time);
   }
 
   // Palhetada: dir 'D' (grave→agudo) ou 'U'.
-  strum(notes, time = this.context.currentTime, dir = 'D', gain = 0.32, spread = 0.022) {
+  strum(notes, time = this.context.currentTime, dir = 'D', gain = 0.32, spread = 0.022, dest) {
     const list = dir === 'U' ? [...notes].reverse() : notes;
-    list.forEach((n, i) => this.pluck(n, time + i * spread, gain));
+    list.forEach((n, i) => this.pluck(n, time + i * spread, gain, dest));
   }
 
   // Preset por id (fábrica ou do usuário) — atalho para telas.

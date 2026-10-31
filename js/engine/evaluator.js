@@ -29,6 +29,9 @@ export class Evaluator {
   toBeats(ms) { return ms * this.bpm / 60000; }
   // Eventos com várias cordas (palhetada ou notas simultâneas) chegam espalhados no tempo.
   spreadB(ev) { return ev.kind === 'strum' || expectedStrings(ev).length > 1 ? this.toBeats(Math.min(SPREAD.max, Math.max(SPREAD.min, (60000 / this.bpm / this.sub) * 0.9))) : 0; }
+  // Fim da janela de um evento: com tempo exigido, só a tolerância; sem tempo ("esperar acerto"), vale o trecho
+  // inteiro do compasso/acorde (dur) — a linha do tempo anda no BPM configurado e o acerto pode vir a qualquer momento dele.
+  endB(ev) { const okB = this.toBeats(this.win.ok); return ev.check.timing ? okB + this.spreadB(ev) : Math.max(okB + this.spreadB(ev), ev.dur || 0); }
   stateOf(p, k) {
     const { ev, i } = this.events[k], key = `${p}:${i}`;
     let st = this.states.get(key);
@@ -46,7 +49,7 @@ export class Evaluator {
     for (let p = Math.max(0, pb - 1); p <= pb + 1 && p < this.passes; p++) {
       for (let k = 0; k < this.events.length; k++) {
         const st = this.stateOf(p, k);
-        if (st.resolved || beat < st.beat - okB || beat > st.beat + okB + this.spreadB(st.ev)) continue;
+        if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
         if (!expectedStrings(st.ev).includes(string)) { near = true; continue; }
         const m = st.matched.get(string);
@@ -78,7 +81,7 @@ export class Evaluator {
       const { p, k } = this.cursor;
       if (k >= this.events.length) { this.cursor = { p: p + 1, k: 0 }; continue; }
       const st = this.stateOf(p, k);
-      if (!st.resolved) { if (st.beat + okB + this.spreadB(st.ev) >= beat) break; this.resolve(st); }
+      if (!st.resolved) { if (st.beat + this.endB(st.ev) >= beat) break; this.resolve(st); }
       this.cursor.k++;
     }
     const out = this.pending; this.pending = []; return out;

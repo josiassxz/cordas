@@ -19,7 +19,9 @@ export class Transport extends EventTarget {
     this.clock = o.clock || (() => this.audio.context.currentTime);
     this.silent = !!o.silent;              // testes: sem áudio
     this.state = 'stopped';
-    this.pos0 = 0; this.t0 = 0; this.nextTick = 0; this.timer = null; this.out = null;
+    this.subClick = !!o.subClick;          // clique suave nas subdivisões
+    this.volume = o.volume ?? 1;
+    this.pos0 = 0; this.t0 = 0; this.nextTick = 0; this.timer = null; this.out = null; this.guideOut = null;
   }
 
   get effectiveBpm() { return this.bpm * this.speed; }
@@ -32,12 +34,11 @@ export class Transport extends EventTarget {
   setState(s) { this.state = s; this.dispatchEvent(new CustomEvent('state', { detail: { state: s } })); }
 
   start({ countInBeats = this.beatsPerBar } = {}) {
-    this.ensureOut();
     this.pos0 = -countInBeats;
     this.t0 = this.now() + 0.12;
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
+    this.makeBus();
     this.setState('running');
-    this.unmute();
     this.timer = setInterval(() => this.pump(), 25);
     this.pump();
   }
@@ -46,7 +47,7 @@ export class Transport extends EventTarget {
     if (!this.running) return;
     this.pos0 = this.position();
     clearInterval(this.timer); this.timer = null;
-    this.mute();
+    this.dropBus();
     this.setState('paused');
   }
 
@@ -54,8 +55,8 @@ export class Transport extends EventTarget {
     if (this.state !== 'paused') return;
     this.t0 = this.now() + 0.08;
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
+    this.makeBus();
     this.setState('running');
-    this.unmute();
     this.timer = setInterval(() => this.pump(), 25);
   }
 
@@ -63,7 +64,7 @@ export class Transport extends EventTarget {
 
   stop() {
     clearInterval(this.timer); this.timer = null;
-    this.mute();
+    this.dropBus();
     this.pos0 = 0;
     this.setState('stopped');
   }
@@ -95,25 +96,33 @@ export class Transport extends EventTarget {
       const isBeat = Math.abs(beat - Math.round(beat)) < 1e-9;
       const isBar = isBeat && ((Math.round(beat) % this.beatsPerBar) + this.beatsPerBar) % this.beatsPerBar === 0;
       this.dispatchEvent(new CustomEvent('tick', { detail: { beat, time, isBeat, isBar, countIn: beat < 0 } }));
-      if (this.click && isBeat && !this.silent) this.blip(time, isBar);
+      if (!this.silent && this.out) {
+        if (this.click && isBeat) this.blip(time, isBar);
+        else if (this.click && this.subClick) this.blip(time, false, true);
+      }
       this.nextTick += 1 / this.subdivision;
     }
   }
 
-  // ---- clique com ganho próprio (permite silenciar na pausa) ----
-  ensureOut() {
-    if (this.silent || this.out) return;
+  // ---- barramentos próprios: a cada início/retomada nasce um novo; ao pausar/parar o antigo é DESLIGADO
+  // da saída, então nenhum clique nem nota-guia já agendados chega a soar (nada toca "por inércia").
+  makeBus() {
+    this.dropBus();
+    if (this.silent) return;
     const ctx = this.audio.context;
-    this.out = ctx.createGain();
-    this.out.connect(this.audio.master);
+    this.out = ctx.createGain(); this.out.gain.value = this.volume; this.out.connect(this.audio.master);
+    this.guideOut = ctx.createGain(); this.guideOut.connect(this.audio.instrumentBus || this.audio.master);
   }
-  mute() { if (!this.out) return; const t = this.audio.context.currentTime; this.out.gain.cancelScheduledValues(t); this.out.gain.setValueAtTime(0, t); }
-  unmute() { if (!this.out) return; const t = this.audio.context.currentTime; this.out.gain.cancelScheduledValues(t); this.out.gain.setValueAtTime(1, t + 0.02); }
-  blip(time, accent) {
+  dropBus() {
+    for (const k of ['out', 'guideOut']) { const g = this[k]; if (!g) continue; try { g.gain.cancelScheduledValues(0); g.gain.value = 0; g.disconnect(); } catch { /* já solto */ } this[k] = null; }
+  }
+  setVolume(v) { this.volume = Math.max(0, Math.min(1.5, v)); if (this.out) this.out.gain.value = this.volume; }
+  blip(time, accent, soft = false) {
     const ctx = this.audio.context, o = ctx.createOscillator(), g = ctx.createGain();
     o.frequency.value = accent ? 1760 : 1175;
+    const peak = soft ? 0.14 : accent ? 0.5 : 0.3;
     g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(accent ? 0.5 : 0.3, time + 0.002);
+    g.gain.exponentialRampToValueAtTime(peak, time + 0.002);
     g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
     o.connect(g).connect(this.out);
     o.start(time); o.stop(time + 0.06);
