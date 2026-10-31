@@ -42,7 +42,7 @@ export class Runner {
   start() {
     this.reset();
     const st = this.deps.settings();
-    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning });
+    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, checkStrings: st.checkStrings !== false });
     this.attach(true);
     if (this.mode === 'wait') {
       this.waitList = this.score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -96,6 +96,7 @@ export class Runner {
   setBpm(v) { this.bpm = clamp(Math.round(v), 20, 300); this.transport?.setBpm(this.bpm); this.evaluator?.setTempo(this.effectiveBpm); this.emit('tempo', { bpm: this.bpm, speed: this.speed }); }
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
+  setCheckStrings(on) { if (this.evaluator) this.evaluator.free = on === false; this.deps.setCheckStrings?.(on); }
   setClick(on) { this.click = !!on; if (this.transport) this.transport.click = !!on; }
   setSubClick(on) { this.subClick = !!on; if (this.transport) this.transport.subClick = !!on; }
   setClickVolume(v) { this.clickVolume = v; this.transport?.setVolume(v); }

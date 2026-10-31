@@ -17,7 +17,7 @@ export function installPractice(app) {
 
 function startPractice(app, score, opts = {}) {
   app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
-  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings') };
+  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setCheckStrings: (on) => app.store.set('settings.checkStrings', on) };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;

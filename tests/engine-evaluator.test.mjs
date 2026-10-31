@@ -150,3 +150,17 @@ test('nota única errada pode ser corrigida tocando de novo dentro da janela', (
   assert.equal(play(e, 4, 59, 0.1)[0].type, 'hit');
   assert.equal(e.drain()[0].grade, 'good');
 });
+
+test('sem validar corda: qualquer corda no tempo certo acerta, e fora do tempo não', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const sc = normalizeScore({ id: 't', title: 't', bpm: 100, lengthBeats: 4, events: [{ beat: 0, notes: [{ string: 4, fret: 0 }] }, { beat: 1, notes: [{ string: 3, fret: 2 }, { string: 2, fret: 2 }] }] });
+  const ev = new Evaluator(sc, { checkStrings: false, passes: 1 });
+  ev.noteOn({ string: 0, note: 40, beat: 0.02 });       // corda errada, tempo certo
+  ev.noteOn({ string: 5, note: 64, beat: 1.01 });       // outra corda, tempo certo (acorde de 2 cordas)
+  const out = ev.advance(10);
+  assert.equal(out.length, 2); assert.ok(out.every((r) => r.grade !== 'miss'), 'os dois eventos acertaram só pelo tempo');
+  const s = ev.summary(); assert.equal(s.miss, 0); assert.equal(s.perfect + s.good + s.ok, 2);
+  const strict = new Evaluator(sc, { passes: 1 }); strict.noteOn({ string: 0, note: 40, beat: 0.02 }); strict.advance(10);
+  assert.ok(strict.summary().miss >= 1, 'com validação, a corda errada perde');
+});

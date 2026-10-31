@@ -113,7 +113,7 @@ export function startShell(app, views) {
     $('#stageScale').value = S('stageScale'); $('#stageOut').textContent = S('stageScale') + '%';
     $('#stageFrets').value = S('stageFrets'); $('#fretsOut').textContent = S('stageFrets');
     $('#sustainMs').value = S('sustainMs'); $('#susOut').textContent = (S('sustainMs') / 1000).toFixed(1) + ' s';
-    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); $('#auto').checked = S('auto');
+    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); $('#checkStrings').checked = S('checkStrings') !== false; $('#auto').checked = S('auto');
     $$('input[type=range]', dlg).forEach(fillRange); dlg.showModal();
   });
   const fillRange = (r) => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%');
@@ -125,6 +125,7 @@ export function startShell(app, views) {
   $('#syncBtn').addEventListener('click', () => { dlg.close(); openSync(app); });
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });
+  $('#checkStrings').addEventListener('change', (e) => store.set('settings.checkStrings', e.target.checked));
   $('#synth').addEventListener('change', (e) => store.set('settings.synth', e.target.checked));
   $('#auto').addEventListener('change', (e) => store.set('settings.auto', e.target.checked));
   $('#resetBtn').addEventListener('click', () => { if (confirm('Apagar todo o progresso salvo neste navegador? (Os ajustes são mantidos.)')) { store.reset(['settings']); dlg.close(); render(); } });

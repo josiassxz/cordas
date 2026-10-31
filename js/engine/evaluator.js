@@ -19,6 +19,7 @@ export class Evaluator {
   constructor(score, o = {}) {
     this.score = score; this.len = score.lengthBeats;
     this.passes = o.passes ?? Infinity; this.offset = o.pitchOffset ?? 0; this.rigor = o.rigor ?? 'normal';
+    this.free = o.checkStrings === false;   // só o TEMPO conta: qualquer corda tocada no ritmo certo vale
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
     this.states = new Map(); this.cursor = { p: 0, k: 0 }; this.pending = []; this.results = []; this.extras = 0; this.avoidHits = 0;
@@ -50,6 +51,7 @@ export class Evaluator {
       for (let k = 0; k < this.events.length; k++) {
         const st = this.stateOf(p, k);
         if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
+        if (this.free) { if (expectedStrings(st.ev).length && !st.matched.size) { const d = Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
         if (!expectedStrings(st.ev).includes(string)) { near = true; continue; }
         const m = st.matched.get(string);
@@ -62,6 +64,12 @@ export class Evaluator {
     if (!best) {
       if (avoidSt) { avoidSt.avoid++; this.avoidHits++; return [{ type: 'avoid', string, note, key: avoidSt.key }]; }
       this.extras++; return [{ type: 'extra', string, note, near }];
+    }
+    if (this.free) {   // sem validar corda: a 1ª nota dentro da janela acerta o evento inteiro (nota, corda e direção não são conferidas)
+      for (const s of expectedStrings(best.ev)) best.matched.set(s, { ok: true, note, beat });
+      best.firstBeat = beat; best.order.push(string);
+      this.resolve(best);
+      return [{ type: 'hit', string, note, key: best.key }];
     }
     const exp = expectedPitch(best.ev, string, this.offset, this.tuning);
     const checked = best.ev.check.pitch && exp != null && (best.ev.kind === 'note' || this.rigor === 'strict');
