@@ -86,6 +86,8 @@ export class Fretboard {
       const g = svg('g', { class: `fb-exp ${it.state || 'pending'} ${FINGER_CLASS[it.finger] || ''}`, transform: `translate(${x} ${y})` }, this.layerExpected);
       svg('circle', { r: it.fret === 0 ? 8 : 12 }, g);
       if (it.finger && it.fret > 0) svg('text', { 'text-anchor': 'middle', y: 4.5 }, g).textContent = it.finger;
+      it.el = g;
+      if (this.pressedFret?.get(it.string) === it.fret) this.showNote(it, true);
     }
   }
   clearExpected() { this.setExpected([]); }
@@ -132,8 +134,19 @@ export class Fretboard {
   sustained() { return [...this.live].map(([string, v]) => ({ string, note: v.note, fret: v.fret })); }
 
   // ---------- casa pressionada (sensor do braço, sem palhetar) ----------
+  // Marcador esperado coberto por uma casa pressionada: troca o número do dedo pela nota.
+  showNote(it, on) {
+    const g = it.el; if (!g || it.fret === 0) return;
+    let t = g.querySelector('text');
+    if (on) {
+      if (!t) { t = svg('text', { 'text-anchor': 'middle', y: 4.5 }, g); t.dataset.added = '1'; }
+      t.dataset.orig ??= t.textContent; t.textContent = noteName(this.tuning[it.string] + it.fret).replace(/\d/, '');
+    } else if (t) { if (t.dataset.added) t.remove(); else if (t.dataset.orig !== undefined) { t.textContent = t.dataset.orig; delete t.dataset.orig; } }
+  }
   press(string, fret) {
     this.unpress(string);
+    (this.pressedFret ??= new Map()).set(string, fret);
+    this.expected.filter((e) => e.string === string && e.fret === fret).forEach((e) => this.showNote(e, true));
     const g = svg('g', { class: 'fb-press', transform: `translate(${this.cellX(fret)} ${this.rowY(string)})` }, this.layerPress);
     svg('circle', { r: 13 }, g);
     const note = this.tuning[string] + fret;
@@ -142,6 +155,8 @@ export class Fretboard {
     this.pressEls ??= new Map(); this.pressEls.set(string, g);
   }
   unpress(string) {
+    const strs = string < 0 ? [...(this.pressedFret?.keys() || [])] : [string];
+    for (const s of strs) { this.expected.filter((e) => e.string === s && this.pressedFret?.get(s) === e.fret).forEach((e) => this.showNote(e, false)); this.pressedFret?.delete(s); }
     if (string < 0) { this.layerPress.replaceChildren(); this.pressEls?.clear(); return; }
     this.pressEls?.get(string)?.remove(); this.pressEls?.delete(string);
   }

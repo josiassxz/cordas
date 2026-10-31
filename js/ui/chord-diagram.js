@@ -32,9 +32,9 @@ export function chordDiagram(v, o = {}) {
       const y = ry(f - v.baseFret + 0.5) + oy, d = v.fingers[s], isRoot = (STANDARD[s] + f) % 12 === v.root;
       const inBarre = v.barre && f === v.barre.fret && s >= v.barre.from && s <= v.barre.to && s !== v.barre.from && s !== v.barre.to;
       if (!inBarre) {
-        g += `<circle cx="${x}" cy="${y}" r="6.6" style="fill:${COLORS[d] || 'var(--accent)'}${isRoot ? ';stroke:#fff;stroke-width:1.6' : ''}"/>`;
+        g += `<circle class="cd-dot" data-s="${s}" data-f="${f}" cx="${x}" cy="${y}" r="6.6" style="fill:${COLORS[d] || 'var(--accent)'}${isRoot ? ';stroke:#fff;stroke-width:1.6' : ''}"/>`;
         const txt = label === 'finger' ? (d || '') : label === 'note' ? pcName((STANDARD[s] + f) % 12) : '';
-        if (txt !== '') g += `<text x="${x}" y="${y + 3.4}" text-anchor="middle" style="fill:#14100a;font:800 ${label === 'note' ? 7.5 : 9}px var(--font)">${txt}</text>`;
+        if (txt !== '') g += `<text class="cd-txt" data-s="${s}" data-f="${f}" data-orig="${txt}" x="${x}" y="${y + 3.4}" text-anchor="middle" style="fill:#14100a;font:800 ${label === 'note' ? 7.5 : 9}px var(--font)">${txt}</text>`;
       }
     }
   });
@@ -43,4 +43,22 @@ export function chordDiagram(v, o = {}) {
   if (showTitle) g += `<text x="${(X0 + sx(5)) / 2}" y="12" text-anchor="middle" style="fill:var(--tx);font:700 13px var(--font-display)">${v.name}</text>`;
   const aria = `${v.name}: ${v.frets.map((f, s) => (f < 0 ? `corda ${s + 1} abafada` : `corda ${s + 1} casa ${f}`)).join(', ')}`;
   return `<svg class="cdiag" viewBox="0 0 ${X0 + sx(5) - X0 + 24} ${H}" width="${size}" role="img" aria-label="${aria}">${g}</svg>`;
+}
+
+// Ao vivo: quando a casa pressionada na guitarra cai numa bolinha de qualquer diagrama da tela,
+// o número do dedo é trocado pelo nome da nota até a marca sumir.
+export function bindDiagramPress(guitar) {
+  const swap = (string, fret, on) => {
+    document.querySelectorAll(`.cd-txt[data-s="${string}"]`).forEach((t) => {
+      if (on && +t.dataset.f !== fret) return;
+      if (on) { t.textContent = pcName((STANDARD[string] + fret) % 12); t.style.fontSize = '7.5px'; }
+      else { t.textContent = t.dataset.orig; t.style.fontSize = ''; }
+    });
+  };
+  const last = new Map();
+  guitar.addEventListener('press', (e) => { const { string, fret } = e.detail; swap(string, last.get(string), false); last.set(string, fret); swap(string, fret, true); });
+  guitar.addEventListener('unpress', (e) => {
+    const strings = e.detail.string < 0 ? [...last.keys()] : [e.detail.string];
+    for (const s of strings) { swap(s, last.get(s), false); last.delete(s); }
+  });
 }

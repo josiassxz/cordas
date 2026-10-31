@@ -1,6 +1,7 @@
 // Casca da aplicação: navegação, status da guitarra, palco com o braço ao vivo, ajustes e modo demo.
 import { $, $$, icon, paintIcons, toast } from './core/dom.js';
 import { Fretboard, bindGuitar } from './ui/fretboard.js';
+import { bindDiagramPress } from './ui/chord-diagram.js';
 import { INSTRUMENTS, STANDARD, detectChord, noteName, setFlats } from './music/theory.js';
 
 export function startShell(app, views) {
@@ -52,6 +53,7 @@ export function startShell(app, views) {
   const board = new Fretboard($('#stageBoard'), { offset: store.get('settings.pitchOffset', 0) });
   app.stage = board;
   bindGuitar(board, guitar);
+  bindDiagramPress(guitar);
   guitar.addEventListener('notes', (e) => {
     const act = e.detail.active, notes = [...act.entries()].sort((a, b) => a[0] - b[0]).map(([, n]) => n);
     const ch = notes.length >= 2 ? detectChord(notes) : null;
