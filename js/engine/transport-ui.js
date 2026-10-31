@@ -12,13 +12,17 @@ export function mountTransport(host, run, { keys = true } = {}) {
     <button class="btn icon" data-a="stop" aria-label="Parar" title="Parar e ver o resultado">${icon('stop')}</button>
     <div class="stepper" data-r="bpm"><button class="btn icon sm" data-a="bpm-" aria-label="Diminuir BPM">−</button><b class="num" data-r="bpmv"></b><small>BPM</small><button class="btn icon sm" data-a="bpm+" aria-label="Aumentar BPM">+</button></div>
     <input type="range" class="pr-bpmr" data-a="bpmr" min="30" max="240" step="1" aria-label="BPM (muda ao vivo)" title="BPM — muda ao vivo, sem parar a linha do tempo">
-    <div class="seg" role="group" aria-label="Velocidade">${SPEEDS.map((s) => `<button data-speed="${s}" aria-pressed="false">${s * 100}%</button>`).join('')}</div>
-    <div class="seg" role="group" aria-label="Repetir">${REPEATS.map(([v, l]) => `<button data-repeat="${v}" aria-pressed="false" title="Repetir">${l}</button>`).join('')}</div>
-    <label class="chip pr-toggle"><input type="checkbox" data-a="guide"> Guia sonoro</label>
-    <button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Sincronizar</button>
-    <label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>
-    <label class="chip pr-toggle" title="Clique suave também nas subdivisões (e, &, a)"><input type="checkbox" data-a="subclick"> Subdivisões</label>
     <div class="pr-prog"><div class="progress" role="progressbar" aria-label="Progresso" aria-valuemin="0" aria-valuemax="100"><i></i></div><span class="num dim" data-r="lap"></span></div>
+    <button class="btn icon pr-gear" data-a="gear" aria-label="Configurações do exercício" aria-expanded="false" title="Velocidade, repetição, metrônomo, sincronizar…">${icon('gear')}</button>
+    <div class="pr-pop" hidden role="dialog" aria-label="Configurações do exercício">
+      <div class="pr-pop-row"><span class="h3">Velocidade</span><div class="seg" role="group" aria-label="Velocidade">${SPEEDS.map((s) => `<button data-speed="${s}" aria-pressed="false">${s * 100}%</button>`).join('')}</div></div>
+      <div class="pr-pop-row"><span class="h3">Repetir</span><div class="seg" role="group" aria-label="Repetir">${REPEATS.map(([v, l]) => `<button data-repeat="${v}" aria-pressed="false" title="Repetir">${l}</button>`).join('')}</div></div>
+      <div class="pr-pop-row"><span class="h3">Som</span><div class="row wrap">
+        <label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>
+        <label class="chip pr-toggle" title="Clique suave também nas subdivisões (e, &, a)"><input type="checkbox" data-a="subclick"> Subdivisões</label>
+        <label class="chip pr-toggle"><input type="checkbox" data-a="guide"> Guia sonoro</label></div></div>
+      <div class="pr-pop-row"><span class="h3">Timing</span><button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Sincronizar com a guitarra…</button></div>
+    </div>
   </div>`;
   const $ = (s) => host.querySelector(s), play = $('.play');
   const paintPlay = () => { const st = run.state, ic = st === 'running' || st === 'countin' ? 'pause' : 'play'; play.innerHTML = icon(ic); play.setAttribute('aria-label', LABEL[st]); play.title = `${LABEL[st]} (P)`; };
@@ -43,7 +47,8 @@ export function mountTransport(host, run, { keys = true } = {}) {
     if (b.dataset.a === 'toggle') run.toggle();
     else if (b.dataset.a === 'restart') run.restart();
     else if (b.dataset.a === 'stop') run.stop();
-    else if (b.dataset.a === 'sync') host.dispatchEvent(new CustomEvent('corda:sync', { bubbles: true }));
+    else if (b.dataset.a === 'sync') { $('.pr-pop').hidden = true; $('.pr-gear').setAttribute('aria-expanded', 'false'); host.dispatchEvent(new CustomEvent('corda:sync', { bubbles: true })); }
+    else if (b.dataset.a === 'gear') { const pop = $('.pr-pop'); pop.hidden = !pop.hidden; b.setAttribute('aria-expanded', String(!pop.hidden)); }
     else if (b.dataset.a === 'bpm-') run.setBpm(run.bpm - 5);
     else if (b.dataset.a === 'bpm+') run.setBpm(run.bpm + 5);
     else if (b.dataset.speed) run.setSpeed(+b.dataset.speed);
@@ -62,11 +67,14 @@ export function mountTransport(host, run, { keys = true } = {}) {
   });
   host.addEventListener('change', (e) => { if (e.target.dataset.a === 'subclick') run.setSubClick(e.target.checked); if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
   const offs = [run.on('state', paint), run.on('tempo', paint), run.on('progress', prog), run.on('pass', prog)];
+  const closePop = (e) => { const pop = $('.pr-pop'); if (pop && !pop.hidden && !e.target.closest?.('.pr-pop, .pr-gear')) { pop.hidden = true; $('.pr-gear')?.setAttribute('aria-expanded', 'false'); } };
+  document.addEventListener('pointerdown', closePop);
   const key = (e) => {
     if (!host.isConnected || e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return;
+    if (e.key === 'Escape') { const pop = $('.pr-pop'); if (pop) pop.hidden = true; return; }
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); run.toggle(); } else if (e.key === 'r' || e.key === 'R') run.restart();
   };
   if (keys) document.addEventListener('keydown', key);
   paint(); prog();
-  return { update() { paint(); prog(); }, destroy() { offs.forEach((f) => f()); document.removeEventListener('keydown', key); host.innerHTML = ''; } };
+  return { update() { paint(); prog(); }, destroy() { offs.forEach((f) => f()); document.removeEventListener('keydown', key); document.removeEventListener('pointerdown', closePop); host.innerHTML = ''; } };
 }

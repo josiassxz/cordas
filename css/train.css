@@ -42,13 +42,13 @@
 @media (max-width:900px){.tr-layout{grid-template-columns:1fr}.tr-techs{flex-direction:row;overflow-x:auto;position:static}.tr-techs button{white-space:nowrap}.pr-hw{height:240px}}
 
 /* pista vertical (setas descendo) */
-.pr-hw.lane{height:clamp(270px,40vh,380px);width:100%}
+.pr-hw.lane{height:calc(200px * var(--stage-scale,1.5));min-height:260px;max-height:62vh;width:100%}
 
 input.pr-bpmr[type=range]{width:130px;flex:none}
 
 /* sincronizar */
 #syncDlg{width:min(760px,94vw)}
-#syncDlg .pr-hw.lane{height:clamp(270px,40vh,380px);width:100%}
+#syncDlg .pr-hw.lane{height:calc(200px * var(--stage-scale,1.5));min-height:260px;max-height:62vh;width:100%}
 .sync-read{display:flex;gap:28px;margin:12px 0}.sync-read div{display:flex;flex-direction:column}.sync-read b{font-size:24px}.sync-read small{color:var(--tx-3)}
 
 .pr-transport{padding:10px 14px;row-gap:8px}
@@ -57,3 +57,11 @@ input.pr-bpmr[type=range]{width:130px;flex:none}
 .pr{gap:10px}
 
 @media (max-height:1000px){.tr-brief{display:none}.pr-head{margin-top:-6px}}
+
+/* engrenagem: velocidade, repetição, sons e sincronizar saem da barra para dar espaço à pista */
+.pr-transport{position:relative}
+.pr-gear[aria-expanded=true]{background:var(--raised-2);color:var(--accent)}
+.pr-pop{position:absolute;right:8px;top:calc(100% + 8px);z-index:30;display:flex;flex-direction:column;gap:12px;min-width:340px;padding:14px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--hair-2);box-shadow:var(--shadow)}
+.pr-pop[hidden]{display:none}
+.pr-pop-row{display:flex;flex-direction:column;gap:6px}
+@media (max-height:1000px){.tr-brief{display:none}}

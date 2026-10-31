@@ -57,7 +57,7 @@ export default {
         <div class="rt-bpm"><button class="btn icon lg" data-b="-5" aria-label="Diminuir 5 BPM">−</button><div><div class="big-num num" id="bpmv">${s.bpm}</div><small class="dim" id="bpmsub">BPM</small></div><button class="btn icon lg" data-b="5" aria-label="Aumentar 5 BPM">+</button></div>
         <input type="range" id="bpmr" min="30" max="240" value="${s.bpm}" aria-label="BPM">
         <div class="row wrap center" style="margin:6px 0 2px"><button class="play-lg" data-a="toggle" aria-label="Iniciar"></button><button class="btn icon" data-a="restart" aria-label="Reiniciar" title="Reiniciar">${icon('restart')}</button><button class="btn" data-a="tap">Tap tempo</button></div>
-        <div class="pr-hw lane" id="mlane" style="height:220px;max-width:none"><canvas aria-label="Pista do metrônomo"></canvas></div>
+        <div class="pr-hw lane" id="mlane" style="height:calc(170px * var(--stage-scale,1.5));min-height:220px;max-width:none"><canvas aria-label="Pista do metrônomo"></canvas></div>
         <div class="rt-opts">
           <div class="field"><span class="h3">Compasso</span><div class="seg" id="sigs">${TIME_SIGNATURES.map((t) => `<button data-sig="${t.id}" aria-pressed="${t.id === s.sig}" title="${t.note}">${t.label}</button>`).join('')}</div></div>
           <div class="field"><span class="h3">Subdivisão</span><div class="seg" id="subs">${SUBDIVISIONS.map((t) => `<button data-sub="${t.id}" aria-pressed="${t.id === s.sub}">${t.label}</button>`).join('')}</div></div>
