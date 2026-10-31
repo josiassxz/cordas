@@ -33,8 +33,8 @@ export function normalizeScore(raw) {
   const s = { beatsPerBar: 4, subdivision: 2, mode: 'timed', level: 1, ...raw };
   s.events = (raw.events || []).map((e) => {
     const kind = kindOf(e);
-    const base = kind === 'strum' ? { strings: true, pitch: true, timing: true, dir: !!e.strum?.dir }
-      : kind === 'note' ? { strings: true, pitch: true, timing: true, dir: false }
+    const base = kind === 'strum' ? { strings: true, pitch: !raw.noPitch, timing: true, dir: !!e.strum?.dir }
+      : kind === 'note' ? { strings: true, pitch: !raw.noPitch, timing: true, dir: false }
         : { strings: false, pitch: false, timing: false, dir: false };
     return { dur: kind === 'strum' ? 0.5 : 0.5, ...e, kind, check: { ...base, ...(e.check || {}) } };
   }).sort((a, b) => a.beat - b.beat);

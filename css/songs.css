@@ -60,3 +60,15 @@ sup{color:var(--tx-3)}
 .mark-row input:focus{border-color:var(--accent)}
 .hint{color:var(--tx-2);font-size:13px;line-height:1.5}
 @media (max-width:900px){.song-cols{grid-template-columns:1fr}.song-row .meta:nth-of-type(n+3){display:none}}
+
+/* tablaturas (dataset local) */
+.songs-modes{align-self:flex-start;margin-bottom:6px}
+.tabs-search{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.tabs-list{display:flex;flex-direction:column}
+.tabs-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:14px;align-items:center;text-align:left;padding:11px 14px;border-top:1px solid var(--hair);border-radius:0;cursor:pointer;transition:background var(--dur)}
+.tabs-row:first-child{border-top:0}.tabs-row:hover{background:var(--raised);border-radius:var(--r)}
+.tabs-row b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tabs-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tabs-detail{display:flex;flex-direction:column;gap:12px}
+.tabs-tracks{display:flex;flex-direction:column;gap:6px}
+.tabs-track{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--r);background:var(--raised);border:1px solid var(--hair);cursor:pointer;text-align:left}
+.tabs-track:hover{border-color:var(--accent)}

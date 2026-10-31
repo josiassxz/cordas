@@ -42,7 +42,7 @@ export class Runner {
   start() {
     this.reset();
     const st = this.deps.settings();
-    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed });
+    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning });
     this.attach(true);
     if (this.mode === 'wait') {
       this.waitList = this.score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -213,8 +213,8 @@ export class Runner {
         if (abs <= this.guideLast || abs > limit || ev.kind === 'rest') continue;
         const time = t.timeOf(abs);
         if (!t.guideOut && !t.silent) continue;
-        if (ev.kind === 'strum') this.deps.audio?.strum?.(ev.strum.strings.map((s) => noteAt(s, ev.strum.frets?.[s] ?? 0, off)), time, ev.strum.dir, 0.22, undefined, t.guideOut);
-        else ev.notes.forEach((n) => this.deps.audio?.pluck?.(noteAt(n.string, n.fret, off), time, 0.3, t.guideOut));
+        if (ev.kind === 'strum') this.deps.audio?.strum?.(ev.strum.strings.map((s) => noteAt(s, ev.strum.frets?.[s] ?? 0, off, this.score.tuning)), time, ev.strum.dir, 0.22, undefined, t.guideOut);
+        else ev.notes.forEach((n) => this.deps.audio?.pluck?.(noteAt(n.string, n.fret, off, this.score.tuning), time, 0.3, t.guideOut));
       }
     }
     this.guideLast = limit;

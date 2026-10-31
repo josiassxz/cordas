@@ -9,6 +9,7 @@ import { LIMITS } from '../songs/analysis.js';
 import { addChord, editChord, removeChord, moveChord, chordAt, nextChord, spans, tapTempo, nudgeLoop, normalizeLoop } from '../songs/timeline.js';
 import { chordChangeScore } from '../songs/score.js';
 import { isValidSymbol } from '../songs/chordnames.js';
+import { loadIndex, searchTabs, fetchSong, alphaTexToScore, trackLabel } from '../songs/tabs.js';
 
 let lib = null;
 const jobs = new Map(), bus = new EventTarget();   // análises em andamento sobrevivem à troca de tela
@@ -48,6 +49,9 @@ export default {
 function libraryPage(el, app) {
   const st = { query: '', sort: 'recent', tag: '', fav: false };
   el.innerHTML = `<div class="page songs">
+    <div class="seg songs-modes" role="tablist" aria-label="Fonte"><button data-pane="mine" aria-pressed="true">Minhas músicas</button><button data-pane="tabs" aria-pressed="false">Tablaturas (buscar por nome)</button></div>
+    <div id="tabsPane" hidden></div>
+    <div id="minePane">
     <div class="row wrap songs-bar">
       <label class="search grow" style="max-width:420px;min-width:300px">${icon('search')}<input type="search" id="q" placeholder="Buscar por música, artista ou tag" aria-label="Buscar músicas"></label>
       <select id="sort" aria-label="Ordenar"><option value="recent">Mais recentes</option><option value="played">Tocadas há pouco</option><option value="title">Título</option><option value="artist">Artista</option><option value="bpm">Andamento</option></select>
@@ -61,8 +65,18 @@ function libraryPage(el, app) {
     <div id="jobs" class="jobs"></div>
     <div id="list" class="song-list" role="list"></div>
     <p class="hint dim">Seus arquivos ficam somente neste navegador (IndexedDB) e nunca são enviados a lugar nenhum. O Corda não contorna DRM: use arquivos que você adquiriu legalmente, sem proteção.</p>
+    </div>
   </div>`;
   const $ = (s) => el.querySelector(s);
+  const tabsUi = tabsPane(el, app);
+  el.querySelector('.songs-modes').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-pane]'); if (!b) return;
+    el.querySelectorAll('[data-pane]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $('#minePane').hidden = b.dataset.pane !== 'mine'; $('#tabsPane').hidden = b.dataset.pane !== 'tabs';
+    if (b.dataset.pane === 'tabs') tabsUi.show();
+  });
+  if (sessionStorage.getItem('corda.songs.pane') === 'tabs') el.querySelector('[data-pane=tabs]').click();
+  el.querySelector('.songs-modes').addEventListener('click', (e) => { const b = e.target.closest('[data-pane]'); if (b) sessionStorage.setItem('corda.songs.pane', b.dataset.pane); });
 
   const paint = () => {
     const items = lib.list(st), tags = lib.allTags();
@@ -373,4 +387,64 @@ function songPage(el, app, id) {
   })();
 
   return () => { disposed = true; cancelAnimationFrame(raf); document.removeEventListener('keydown', onKey); bus.removeEventListener('job', onJob); removeEventListener('resize', draw); player?.dispose(); };
+}
+
+
+// ============================== TABLATURAS (dataset local) ==============================
+function tabsPane(el, app) {
+  const root = el.querySelector('#tabsPane');
+  let ready = false, run = null, q = '', results = [], open = null;
+  const stop = () => { run?.destroy?.(); run = null; };
+  function shell() {
+    root.innerHTML = `<div class="tabs-search">
+      <label class="search grow">${icon('search')}<input type="search" id="tq" placeholder="Buscar tablatura por música ou artista (ex.: wonderwall, metallica one…)" aria-label="Buscar tablatura" value="${esc(q)}" autocomplete="off"></label>
+      <span class="dim" id="tstat"></span></div>
+      <div id="tbody"></div>`;
+  }
+  async function show() {
+    if (ready) return;
+    shell();
+    const stat = root.querySelector('#tstat'); stat.textContent = 'Carregando índice…';
+    try {
+      const idx = await loadIndex(); ready = true;
+      stat.textContent = `${idx.length.toLocaleString('pt-BR')} músicas com faixa de guitarra`;
+      root.querySelector('#tq').focus(); paintResults();
+    } catch (e) { root.querySelector('#tbody').innerHTML = `<div class="empty"><b>Tablaturas não encontradas</b><span>${esc(e.message)}</span></div>`; }
+  }
+  function paintResults() {
+    const body = root.querySelector('#tbody');
+    if (!q.trim()) { body.innerHTML = '<div class="empty"><span>Digite o nome da música ou do artista.</span></div>'; return; }
+    results = searchTabs(q);
+    body.innerHTML = results.length ? `<div class="tabs-list" role="list">${results.map((r, i) => `<button class="tabs-row" role="listitem" data-i="${i}"><b>${esc(r.title)}</b><span class="dim">${esc(r.artist)}</span><span class="dim num">${r.tempo} BPM · ${r.tracks} faixa${r.tracks > 1 ? 's' : ''}</span></button>`).join('')}</div>` : '<div class="empty"><span>Nada encontrado. Tente só uma palavra do título.</span></div>';
+  }
+  async function openSong(row) {
+    const body = root.querySelector('#tbody'); body.innerHTML = '<div class="empty"><span>Abrindo…</span></div>';
+    try {
+      const song = await fetchSong(row); open = { row, song };
+      body.innerHTML = `<section class="panel tabs-detail"><div class="row between wrap"><div><div class="h2">${esc(song.title)}</div><div class="dim">${esc(song.artist)} · ${song.tempo} BPM</div></div><button class="btn ghost sm" data-back>${icon('chev', 'flip')} Voltar à busca</button></div>
+        <p class="muted">Escolha a faixa de guitarra para praticar. A pista mostra as notas por corda e casa, no andamento original (reduza a velocidade na engrenagem).</p>
+        <div class="tabs-tracks">${song.tracks.map((t, k) => { const sc = alphaTexToScore(t, { id: row.id, trackIndex: k, artist: song.artist, title: song.title, tempo: song.tempo }); return `<button class="tabs-track" data-k="${k}"><b>Faixa ${k + 1} · ${esc(trackLabel(t))}</b><span class="dim">${sc.events.length} acordes/notas · ${esc(sc.tuningName)}</span></button>`; }).join('')}</div>
+        <div id="tabPractice"></div></section>`;
+      paintIcons(body);
+    } catch (e) { body.innerHTML = `<div class="empty"><b>Não consegui abrir</b><span>${esc(e.message)}</span></div>`; }
+  }
+  function practice(k) {
+    const { row, song } = open, t = song.tracks[k];
+    const score = alphaTexToScore(t, { id: row.id, trackIndex: k, artist: song.artist, title: song.title, tempo: song.tempo });
+    stop();
+    const body = root.querySelector('#tbody');
+    body.innerHTML = '<div id="tabPractice"></div>';
+    run = app.practice.start(score, { host: body.querySelector('#tabPractice'), repeat: 'once', autostart: false,
+      meta: { limitations: [score.standardTuning ? 'Tablatura transcrita por usuários: pode ter erros. Use a velocidade reduzida e o guia sonoro para estudar.' : `Esta faixa usa afinação diferente (${score.tuningName}). Sua guitarra está em afinação padrão: o app confere só as CORDAS tocadas, não a altura das notas.`] },
+      onClose: () => { stop(); openSong(row); } });
+    paintIcons(body);
+  }
+  let timer = 0;
+  root.addEventListener('input', (e) => { if (e.target.id === 'tq') { q = e.target.value; clearTimeout(timer); timer = setTimeout(paintResults, 120); } });
+  root.addEventListener('click', (e) => {
+    const r = e.target.closest('.tabs-row'); if (r) return openSong(results[+r.dataset.i]);
+    const t = e.target.closest('.tabs-track'); if (t) return practice(+t.dataset.k);
+    if (e.target.closest('[data-back]')) { open = null; stop(); paintResults(); }
+  });
+  return { show };
 }
