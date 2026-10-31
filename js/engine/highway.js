@@ -40,7 +40,7 @@ export class Highway {
     const target = v.pos;
     this.viewPos = Math.abs(target - this.viewPos) > 3 || v.mode !== 'wait' ? target : this.viewPos + (target - this.viewPos) * 0.18;
     const pos = this.viewPos;
-    const nowX = Math.round(W * NOW_FRAC), ppb = (W - nowX - 24) / VIS_BEATS, behind = nowX / ppb;
+    const nowX = Math.round(W * Math.max(0.1, Math.min(0.6, v.pastFrac ?? NOW_FRAC))), ppb = (W - nowX - 24) / VIS_BEATS, behind = nowX / ppb;
     const laneH = (H - TOP - BOTTOM) / 6, laneY = (s) => TOP + (5 - s) * laneH + laneH / 2;
     const X = (abs) => nowX + (abs - pos) * ppb;
 
@@ -78,7 +78,7 @@ export class Highway {
       const abs = p * len + ev.beat, x = X(abs);
       if (x < 34 - ppb || x > W + 40) return;
       const res = v.results.get(`${p}:${i}`);
-      const past = nowX - x, alpha = res ? Math.max(0.12, 1 - Math.max(0, past) / (ppb * 1.5)) : past > ppb * 0.4 ? Math.max(0.08, 1 - (past - ppb * 0.4) / (ppb * 0.8)) : 1;
+      const past = nowX - x, alpha = res ? Math.max(0.5, 1 - Math.max(0, past) / Math.max(1, nowX - 40) * 0.5) : past > ppb * 0.4 ? Math.max(0.08, 1 - (past - ppb * 0.4) / (ppb * 0.8)) : 1;
       c.globalAlpha = alpha;
       this.drawEvent(ev, x, laneY, laneH, ppb, res);
       c.globalAlpha = 1;

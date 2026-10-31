@@ -2,7 +2,7 @@
 const KEY = 'corda.v2', OLD_KEY = 'corda.v1';
 
 const DEFAULTS = {
-  settings: { latency: 80, rigor: 'normal', flats: false, synth: false, auto: true, pitchOffset: 0, stageScale: 150, stageFrets: 22, timingTolerance: 'normal', validateDir: 'soft', validateNeck: true, validateSound: 'off', sustainMs: 2500, capo: 0, instrument: 'guitar', volume: 0.8 },
+  settings: { latency: 80, rigor: 'normal', flats: false, synth: false, auto: true, pitchOffset: 0, stageScale: 150, stageFrets: 22, timingTolerance: 'normal', pastFrac: 0.3, validateDir: 'soft', validateNeck: true, validateSound: 'off', sustainMs: 2500, capo: 0, instrument: 'guitar', volume: 0.8 },
   chords: {},        // id -> { ok, tries, streak }
   sessions: [],      // histórico de exercícios (ver docs/ARCHITECTURE.md)
   days: [],          // dias com prática (YYYY-MM-DD)

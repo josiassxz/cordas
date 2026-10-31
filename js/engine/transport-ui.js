@@ -30,6 +30,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
         <label class="chip pr-toggle" title="Conferir se as casas apertadas são as do acorde pedido (sensores de casa)"><input type="checkbox" data-a="vneck"> Montagem no braço</label>
         <select data-a="vsound" aria-label="Som que chega"><option value="off">Não conferir o som</option><option value="chord">Som: pelo acorde</option><option value="strings">Som: corda a corda</option></select></div>
       <div class="pr-pop-row"><span class="h3">Direção ↓ / ↑ da palhetada</span><select data-a="vdir" aria-label="Direção da palhetada"><option value="off">Não conferir</option><option value="soft">Conferir (rebaixa a nota)</option><option value="strict">Exigir (errou = erro)</option></select></div>
+      <div class="pr-pop-row"><span class="h3">Espaço para trás na timeline <small class="dim">(ver o que você já tocou)</small></span><select data-a="past" aria-label="Espaço para trás"><option value="0.15">Pouco</option><option value="0.3">Médio</option><option value="0.45">Muito</option></select></div>
       <div class="pr-pop-row"><span class="h3">Tolerância de tempo <small class="dim">(largura do bloco)</small></span><select data-a="tol" aria-label="Tolerância de tempo"><option value="strict">Rigorosa</option><option value="normal">Normal</option><option value="wide">Ampla</option></select></div>
       <div class="pr-pop-row"><span class="h3">Timing</span><button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Calibrar o timing…</button></div>
     </div>
@@ -51,6 +52,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
         if (!t) { if (!ms.querySelector('[data-custom]')) ms.insertAdjacentHTML('beforeend', `<option data-custom value="custom">${bpb} tempos</option>`); ms.value = 'custom'; } else { ms.querySelector('[data-custom]')?.remove(); ms.value = t.id; } }
       if (sd) sd.value = String(sub); }
     { const vd = $('[data-a=vdir]'); if (vd) vd.value = run.evaluator?.dirMode || run.deps.settings().validateDir || 'soft'; }
+    { const ps = $('[data-a=past]'); if (ps) ps.value = String(run.deps.settings().pastFrac ?? 0.3); }
     { const tl = $('[data-a=tol]'); if (tl) tl.value = run.deps.settings().timingTolerance || 'normal'; }
     const sc = $('[data-a=subclick]'); if (sc) sc.checked = !!run.subClick;
     { const v = run.evaluator ? { neck: run.evaluator.neckOn, sound: run.evaluator.sound } : validationOf(run.deps.settings()); const vn = $('[data-a=vneck]'), vs = $('[data-a=vsound]'); if (vn) vn.checked = v.neck; if (vs) vs.value = v.sound; }
@@ -86,6 +88,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
     if (e.target.dataset.a === 'meter' && e.target.value !== 'custom') { const t = TIME_SIGNATURES.find((x) => x.id === e.target.value); run.setMeter({ beats: t.beats, sub: t.sub }); paint(); }
     if (e.target.dataset.a === 'subdiv') { run.setMeter({ sub: +e.target.value }); paint(); }
     if (e.target.dataset.a === 'vdir') { run.setDirMode(e.target.value); paint(); }
+    if (e.target.dataset.a === 'past') { run.deps.setPast?.(e.target.value); paint(); }
     if (e.target.dataset.a === 'tol') { run.setTolerance(e.target.value); paint(); }
     if (e.target.dataset.a === 'vneck') { run.setValidation({ neck: e.target.checked }); paint(); }
     if (e.target.dataset.a === 'vsound') { run.setValidation({ sound: e.target.value }); paint(); } if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });

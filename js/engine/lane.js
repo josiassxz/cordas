@@ -4,8 +4,7 @@
 // e o número da casa aparece escrito dentro dele. Mesma interface do Highway:
 //   new Lane(canvas, () => ({ score, pos, results, passes, state })).start() / .stop()
 
-const VIS_BEATS = 5.2;       // batidas visíveis à direita da barra de agora
-const TAIL_BEATS = 0.8;      // batidas já passadas, à esquerda
+const SPAN_BEATS = 7.4;      // batidas visíveis no total (antes + depois da barra de agora)
 const SUB_LABELS = { 1: [''], 2: ['', '&'], 3: ['', 'tri', 'let'], 4: ['', 'e', '&', 'a'] };
 const TECH_LABEL = { hammer: 'martelo', pull: 'puxada', slide: 'slide', bend: 'bend', vibrato: 'vibrato', mute: 'abafado', palm: 'P.M.' };
 
@@ -39,7 +38,8 @@ export class Lane {
     const [W, H] = this.fit();
     c.clearRect(0, 0, W, H);
     const sc = v.score, len = sc.lengthBeats, bpb = sc.beatsPerBar, sub = Math.max(1, Math.min(4, sc.subdivision || 2));
-    const pos = v.pos, nowX = Math.round(Math.max(70, Math.min(150, W * 0.13))), ppb = (W - nowX - 18) / VIS_BEATS;
+    const pos = v.pos, pastF = Math.max(0.1, Math.min(0.6, v.pastFrac ?? 0.3)), ppb = (W - 54) / SPAN_BEATS, nowX = Math.round(Math.max(110, 40 + (W - 54) * pastF));
+    const TAIL_BEATS = (nowX - 36) / ppb, VIS_BEATS = (W - nowX) / ppb;   // quanto cabe para trás (acertos continuam visíveis) e para a frente
     const X = (abs) => nowX + (abs - pos) * ppb;
     const top = 80, bottom = H - 12, rowH = (bottom - top) / 6, rowY = (s) => top + (5 - s) * rowH + rowH / 2;   // s=5 (corda 1, aguda) em cima
 
@@ -58,7 +58,7 @@ export class Lane {
     for (let k = first; k <= last; k++) {
       const abs = k * slot, x = X(abs); if (x < 36 || x > W + 4) continue;
       const onBeat = Math.abs(abs - Math.round(abs)) < 1e-6, bi = ((Math.round(abs) % bpb) + bpb) % bpb, bar = onBeat && bi === 0;
-      const faded = abs < pos - 1e-6 ? 0.35 : 1;
+      const faded = abs < pos - 1e-6 ? 0.6 : 1;
       c.globalAlpha = faded;
       c.strokeStyle = bar ? 'rgba(255,255,255,.4)' : onBeat ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.07)';
       c.lineWidth = bar ? 2 : 1; if (!onBeat) c.setLineDash([2, 5]);
@@ -80,7 +80,8 @@ export class Lane {
       const abs = p * len + ev.beat, x = X(abs);
       if (x < 30 - ppb || x > W + 40) return;
       const res = v.results.get(`${p}:${i}`), past = nowX - x;
-      c.globalAlpha = res ? Math.max(0.15, 1 - Math.max(0, past) / (ppb * 1.2)) : past > ppb * 0.35 ? Math.max(0.08, 1 - (past - ppb * 0.35) / (ppb * 0.7)) : 1;
+      const room = Math.max(1, nowX - 40);   // espaço para trás: o resultado só esmaece aos poucos até a borda
+      c.globalAlpha = res ? Math.max(0.5, 1 - Math.max(0, past) / room * 0.5) : past > ppb * 0.35 ? Math.max(0.08, 1 - (past - ppb * 0.35) / (ppb * 0.7)) : 1;
       this.drawEvent(ev, x, rowY, rowH, ppb, res, v);
       c.globalAlpha = 1;
     });
@@ -160,6 +161,13 @@ export class Lane {
     if (dir) this.chevron(x, y0 + Math.min(34, (y1 - y0) * 0.36), dir, Math.min(w * 0.78, 30), guide ? C['--tx-2'] : '#fff6df', 2);
     if (ev.tech && TECH_LABEL[ev.tech]) { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.fillText(TECH_LABEL[ev.tech], x, y1 + 8); }
     (ev.avoid || []).forEach((s) => { const y = rowY(s); c.strokeStyle = C['--avoid']; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 6, y - 6); c.lineTo(x + 6, y + 6); c.moveTo(x + 6, y - 6); c.lineTo(x - 6, y + 6); c.stroke(); });
-    void okAll;
+    // resultado bem visível: ✓ verde e quantos ms você chegou antes (−) ou depois (+) do tempo exato; ✕ se perdeu
+    if (res && !guide) {
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (okAll) {
+        c.fillStyle = '#eafff4'; c.font = '900 24px ui-rounded,system-ui'; c.fillText('✓', x, y1 - 32);
+        if (res.delta != null) { const d = Math.round(res.delta); c.fillStyle = Math.abs(d) <= (v.perfectMs || 40) ? '#9ff5c9' : '#fff0c2'; c.font = '800 12px ui-sans-serif,system-ui'; c.fillText(`${d > 0 ? '+' : ''}${d} ms`, x, y1 - 12); }
+      } else { c.fillStyle = '#ffe3e7'; c.font = '900 24px ui-rounded,system-ui'; c.fillText('✕', x, y1 - 22); }
+    }
   }
 }
