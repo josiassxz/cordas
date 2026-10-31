@@ -51,8 +51,9 @@ export function bindDiagramPress(guitar) {
   const swap = (string, fret, on) => {
     document.querySelectorAll(`.cd-txt[data-s="${string}"]`).forEach((t) => {
       if (on && +t.dataset.f !== fret) return;
-      if (on) { t.textContent = pcName((STANDARD[string] + fret) % 12); t.style.fontSize = '7.5px'; }
-      else { t.textContent = t.dataset.orig; t.style.fontSize = ''; }
+      const dot = t.previousElementSibling;   // a bolinha vem logo antes do texto
+      if (on) { t.textContent = pcName((STANDARD[string] + fret) % 12); t.style.fontSize = '7.5px'; if (dot?.classList.contains('cd-dot')) { dot.dataset.fill = dot.style.fill; dot.style.fill = 'var(--accent)'; dot.setAttribute('r', '7.6'); } }
+      else { t.textContent = t.dataset.orig; t.style.fontSize = ''; if (dot?.dataset.fill !== undefined) { dot.style.fill = dot.dataset.fill; delete dot.dataset.fill; dot.setAttribute('r', '6.6'); } }
     });
   };
   const last = new Map();

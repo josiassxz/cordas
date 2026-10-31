@@ -31,3 +31,7 @@
 /* casa pressionada: mesmo visual da nota tocada (bolinha laranja, nota em preto) */
 .fb-press circle{fill:var(--c-live);stroke:none;filter:drop-shadow(0 0 7px rgba(245,165,36,.55))}
 .fb-press text{fill:#1b1200;font:800 11px var(--font);pointer-events:none}
+
+/* marcador esperado que está sendo pressionado agora: laranja com a nota em preto */
+.fb-exp.pressed circle{fill:var(--c-live);stroke:var(--c-live)}
+.fb-exp.pressed text{fill:#1b1200;font-weight:800}

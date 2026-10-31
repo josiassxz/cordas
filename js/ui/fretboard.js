@@ -138,6 +138,7 @@ export class Fretboard {
   showNote(it, on) {
     const g = it.el; if (!g || it.fret === 0) return;
     let t = g.querySelector('text');
+    g.classList.toggle('pressed', on);
     if (on) {
       if (!t) { t = svg('text', { 'text-anchor': 'middle', y: 4.5 }, g); t.dataset.added = '1'; }
       t.dataset.orig ??= t.textContent; t.textContent = noteName(this.tuning[it.string] + it.fret).replace(/\d/, '');
