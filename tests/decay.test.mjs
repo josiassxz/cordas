@@ -17,22 +17,15 @@ test('corda sem note-off é apagada após sustainMs; CC123 apaga na hora', async
   assert.equal(offs.length, 1);
 });
 
-test('CC 49/50 viram casa pressionada e expiram', async () => {
-  const g = new Guitar(); g.pressMs = 40;
-  const ev = []; g.addEventListener('press', (e) => ev.push(e.detail)); g.addEventListener('unpress', (e) => ev.push('u' + e.detail.string));
-  g.handle({ type: 'cc', ch: 2, a: 49, b: 5 }, 0);
-  g.handle({ type: 'cc', ch: 2, a: 50, b: 5 }, 0);
-  assert.deepEqual(ev, [{ string: 3, fret: 5 }]);
-  await new Promise((r) => setTimeout(r, 100));
-  assert.equal(g.pressed.size, 0); assert.equal(ev.at(-1), 'u3');
-});
-
-test('casa pressionada vale enquanto o fluxo de CC continua e sai quando ele para', async () => {
-  const g = new Guitar(); g.pressMs = 60;
-  const ev = []; g.addEventListener('unpress', (e) => ev.push(e.detail.string));
-  g.handle({ type: 'cc', ch: 2, a: 49, b: 5 }, 0);
-  for (let i = 0; i < 4; i++) { await new Promise((r) => setTimeout(r, 40)); g.handle({ type: 'cc', ch: 0, a: 49, b: 5 }, 0); }
-  assert.equal(g.pressed.has(3), true);   // fluxo vivo (outra corda), a corda 3 continua marcada
-  await new Promise((r) => setTimeout(r, 120));
+test('CC 49 aperta e CC 50 solta a casa (ordem das cordas invertida)', () => {
+  const g = new Guitar();
+  const ev = []; g.addEventListener('press', (e) => ev.push(['p', e.detail.string, e.detail.fret])); g.addEventListener('unpress', (e) => ev.push(['u', e.detail.string]));
+  g.handle({ type: 'cc', ch: 4, a: 49, b: 3 }, 0);            // casa 3, corda Lá (índice 1)
+  g.handle({ type: 'noteon', ch: 0, a: 40, b: 40 }, 0);       // palhetar outra corda não solta a casa
+  assert.equal(g.pressed.get(1), 3);
+  g.handle({ type: 'cc', ch: 4, a: 50, b: 2 }, 0);            // "soltou" de outra casa: ignora
+  assert.equal(g.pressed.get(1), 3);
+  g.handle({ type: 'cc', ch: 4, a: 50, b: 3 }, 0);
   assert.equal(g.pressed.size, 0);
+  assert.deepEqual(ev, [['p', 1, 3], ['u', 1]]);
 });

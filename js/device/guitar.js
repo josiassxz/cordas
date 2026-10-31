@@ -5,7 +5,7 @@ import { detectChord } from '../music/theory.js';
 
 export const MIDI_SERVICE = '03b80e5a-ede8-4b33-a751-6ce34ec4c700';
 export const MIDI_CHAR = '7772e5db-3868-4112-a1a9-f2669d106bf3';
-const STALE_MS = 9000;     // corda de casa pressionada sem atualização há tanto tempo é dada como solta
+const PRESS_FAILSAFE_MS = 120000; // só se um "soltou" se perder no Bluetooth
 const STRUM_GAP_MS = 140; // silêncio que encerra uma palhetada
 
 // Pacote BLE MIDI: [header, (timestamp, status, dados...)*]. Timestamps e status têm o bit 7 ligado;
@@ -48,8 +48,7 @@ export class Guitar extends EventTarget {
     this.device = null;
     this.sustainMs = 2500;   // a AG01 não manda note-off; a vibração é estimada por este tempo
     this.pressed = new Map(); // corda -> casa segurada (CC 49/50 = nº da casa; sem sinal de "soltou")
-    this.pressSeen = new Map();
-    this.pressTimer = null;
+    this.pressTimers = new Map();
     this.pressMs = 1200;
     this.decay = new Map();  // corda -> timeout do fim estimado da vibração
   }
@@ -103,7 +102,7 @@ export class Guitar extends EventTarget {
     if (d?.gatt?.connected) d.gatt.disconnect();
   }
 
-  releaseAll() { clearTimeout(this.pressTimer); this.pressSeen.clear(); this.pressed.clear(); this.emit('unpress', { string: -1 }); this.decay.forEach(clearTimeout); this.decay.clear(); this.active.clear(); this.emit('notes', { active: new Map(this.active) }); }
+  releaseAll() { this.pressTimers.forEach(clearTimeout); this.pressTimers.clear(); this.pressed.clear(); this.emit('unpress', { string: -1 }); this.decay.forEach(clearTimeout); this.decay.clear(); this.active.clear(); this.emit('notes', { active: new Map(this.active) }); }
 
   handle(m, t) {
     if (m.ch > 5 && m.type !== 'cc') return;
@@ -118,29 +117,34 @@ export class Guitar extends EventTarget {
     } else if (m.type === 'cc' && m.a === 123) {
       this.active.delete(m.ch); this.clearDecay(m.ch);
     }
-    if (m.type === 'cc' && (m.a === 49 || m.a === 50) && m.b >= 1) this.press(m.ch, m.b);
+    if (m.type === 'cc' && m.a === 49 && m.b >= 1) this.press(m.ch, m.b);
+    else if (m.type === 'cc' && m.a === 50 && m.b >= 1) this.release(m.ch, m.b);
     if (m.type === 'cc') this.emit('cc', { string: m.ch, controller: m.a, value: m.b, t });
     this.emit('notes', { active: new Map(this.active) });
   }
 
-  // Casa pressionada (mesmo sem palhetar). A AG01 manda CC 49/50 SEM PARAR enquanto há dedo no braço
-  // (varrendo as cordas, ~0,5 s por mensagem, a mesma corda se repete a cada 3–5 s) e fica em silêncio
-  // ao soltar. Então: a marca de cada corda vale enquanto o FLUXO estiver vivo; sem nenhuma mensagem por
-  // pressMs, tudo é dado como solto. Uma corda sem atualização por STALE_MS também sai (dedo trocou de corda).
+  // Casa pressionada (mesmo sem palhetar). Protocolo verificado em captura com roteiro:
+  //   CC 49 = apertou a casa (valor = nº da casa) · CC 50 = soltou (valor = casa solta).
+  // A marca fica enquanto o dedo está no braço, mesmo palhetando outras cordas. A ordem das cordas
+  // nesses CCs é inversa à das notas. PRESS_FAILSAFE_MS só cobre um "soltou" perdido pelo Bluetooth.
   press(ch, fret) {
     if (ch > 5) return;
-    ch = 5 - ch;   // nos CC 49/50 a ordem das cordas é inversa à das notas (confirmado na prática)
-    const now = performance.now();
-    this.pressSeen.set(ch, now);
+    ch = 5 - ch;
+    clearTimeout(this.pressTimers.get(ch));
     const changed = this.pressed.get(ch) !== fret;
     this.pressed.set(ch, fret);
     if (changed) this.emit('press', { string: ch, fret });
-    clearTimeout(this.pressTimer);
-    this.pressTimer = setTimeout(() => this.releasePressed(), this.pressMs);
-    for (const [s, t] of this.pressSeen) if (s !== ch && now - t > STALE_MS) this.dropPress(s);
+    this.pressTimers.set(ch, setTimeout(() => this.release(5 - ch, fret, true), PRESS_FAILSAFE_MS));
   }
-  dropPress(s) { this.pressSeen.delete(s); if (this.pressed.delete(s)) this.emit('unpress', { string: s }); }
-  releasePressed() { for (const s of [...this.pressed.keys()]) this.dropPress(s); }
+  release(ch, fret, force = false) {
+    if (ch > 5) return;
+    ch = 5 - ch;
+    const cur = this.pressed.get(ch);
+    if (cur === undefined || (!force && fret !== cur)) return;   // "soltou" de uma casa antiga: o dedo já está em outra
+    clearTimeout(this.pressTimers.get(ch)); this.pressTimers.delete(ch);
+    this.pressed.delete(ch);
+    this.emit('unpress', { string: ch });
+  }
 
   clearDecay(ch) { clearTimeout(this.decay.get(ch)); this.decay.delete(ch); }
   // Sem note-off do aparelho, a corda é dada como parada após sustainMs (estimativa; 0 = só palm mute).

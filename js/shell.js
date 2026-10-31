@@ -68,7 +68,6 @@ export function startShell(app, views) {
   applyFrets(store.get('settings.stageFrets', 22));
   $('#fretsMore').addEventListener('click', () => applyFrets(store.get('settings.stageFrets', 22) + 1));
   $('#fretsLess').addEventListener('click', () => applyFrets(store.get('settings.stageFrets', 22) - 1));
-  guitar.pressMs = store.get('settings.pressMs', 1500);
   guitar.sustainMs = store.get('settings.sustainMs', 2500);
   $('#stageBigger').addEventListener('click', () => applyScale(store.get('settings.stageScale', 150) + 20));
   $('#stageSmaller').addEventListener('click', () => applyScale(store.get('settings.stageScale', 150) - 20));
@@ -110,7 +109,6 @@ export function startShell(app, views) {
     $('#pitchOffset').value = S('pitchOffset'); $('#offOut').textContent = S('pitchOffset');
     $('#stageScale').value = S('stageScale'); $('#stageOut').textContent = S('stageScale') + '%';
     $('#stageFrets').value = S('stageFrets'); $('#fretsOut').textContent = S('stageFrets');
-    $('#pressMs').value = S('pressMs'); $('#pressOut').textContent = (S('pressMs') / 1000).toFixed(1) + ' s';
     $('#sustainMs').value = S('sustainMs'); $('#susOut').textContent = (S('sustainMs') / 1000).toFixed(1) + ' s';
     $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); $('#auto').checked = S('auto');
     $$('input[type=range]', dlg).forEach(fillRange); dlg.showModal();
@@ -120,7 +118,6 @@ export function startShell(app, views) {
   $('#pitchOffset').addEventListener('input', (e) => { store.set('settings.pitchOffset', +e.target.value); board.setOffset(+e.target.value); $('#offOut').textContent = e.target.value; fillRange(e.target); });
   $('#stageScale').addEventListener('input', (e) => { applyScale(+e.target.value); fillRange(e.target); });
   $('#stageFrets').addEventListener('input', (e) => { applyFrets(+e.target.value); fillRange(e.target); });
-  $('#pressMs').addEventListener('input', (e) => { guitar.pressMs = +e.target.value; store.set('settings.pressMs', +e.target.value); $('#pressOut').textContent = (e.target.value / 1000).toFixed(1) + ' s'; fillRange(e.target); });
   $('#sustainMs').addEventListener('input', (e) => { guitar.sustainMs = +e.target.value; store.set('settings.sustainMs', +e.target.value); $('#susOut').textContent = (e.target.value / 1000).toFixed(1) + ' s'; fillRange(e.target); });
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });
