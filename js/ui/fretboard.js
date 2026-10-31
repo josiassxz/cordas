@@ -70,6 +70,7 @@ export class Fretboard {
     }
     this.layerExpected = svg('g', { class: 'fb-expected' }, this.root);
     this.layerLive = svg('g', { class: 'fb-live' }, this.root);
+    this.layerPress = svg('g', { class: 'fb-pressed' }, this.root);
     this.layerFlash = svg('g', { class: 'fb-flash' }, this.root);
     this.layerOff = svg('g', { class: 'fb-offboard' }, this.root);   // notas fora do braço desenhado
     this.host.replaceChildren(this.root);
@@ -130,6 +131,19 @@ export class Fretboard {
   // Notas atualmente sustentadas (ligadas, ainda sem nota desligada): [{string,note,fret}]
   sustained() { return [...this.live].map(([string, v]) => ({ string, note: v.note, fret: v.fret })); }
 
+  // ---------- casa pressionada (sensor do braço, sem palhetar) ----------
+  press(string, fret) {
+    this.unpress(string);
+    const g = svg('g', { class: 'fb-press', transform: `translate(${this.cellX(fret)} ${this.rowY(string)})` }, this.layerPress);
+    svg('circle', { r: 11 }, g);
+    svg('text', { 'text-anchor': 'middle', y: 4 }, g).textContent = fret;
+    this.pressEls ??= new Map(); this.pressEls.set(string, g);
+  }
+  unpress(string) {
+    if (string < 0) { this.layerPress.replaceChildren(); this.pressEls?.clear(); return; }
+    this.pressEls?.get(string)?.remove(); this.pressEls?.delete(string);
+  }
+
   // ---------- resultado de avaliação ----------
   // kind: 'ok' (acertou) | 'bad' (errou); fret opcional (usa o esperado se omitido)
   flash(string, fret, kind) {
@@ -152,8 +166,11 @@ export function bindGuitar(fb, guitar) {
   const on = (e) => fb.noteOn(e.detail.string, e.detail.note, e.detail.vel);
   const off = (e) => fb.noteOff(e.detail.string);
   const notes = (e) => { for (const s of [...fb.live.keys()]) if (!e.detail.active.has(s)) fb.noteOff(s); };
+  const pr = (e) => fb.press(e.detail.string, e.detail.fret);
+  const unpr = (e) => fb.unpress(e.detail.string);
+  guitar.addEventListener('press', pr); guitar.addEventListener('unpress', unpr);
   guitar.addEventListener('noteon', on);
   guitar.addEventListener('noteoff', off);
   guitar.addEventListener('notes', notes);
-  return () => { guitar.removeEventListener('noteon', on); guitar.removeEventListener('noteoff', off); guitar.removeEventListener('notes', notes); };
+  return () => { guitar.removeEventListener('press', pr); guitar.removeEventListener('unpress', unpr); guitar.removeEventListener('noteon', on); guitar.removeEventListener('noteoff', off); guitar.removeEventListener('notes', notes); };
 }

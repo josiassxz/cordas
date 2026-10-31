@@ -7,7 +7,7 @@ const CAPS = [
   ['Nota que soou', 'sim', 'Número MIDI da nota; o traste é derivado dela.'],
   ['Nota sustentada / solta', 'sim', 'Nota desligada ou "all notes off" por corda.'],
   ['Direção da palhetada', 'inferida', 'Ordem em que as cordas chegam (grave→agudo = para baixo). Não vem do aparelho.'],
-  ['Corda apenas pressionada', 'não', 'Sem palhetar não há evento. O app não finge detectar isso.'],
+  ['Casa pressionada (sem palhetar)', 'sim*', 'CC 49/50 por corda trazem o nº da casa (1–22), medido numa varredura do braço. Não há sinal de "soltou": o app apaga a marca ~1,2 s após o último valor. *Interpretação a confirmar.'],
   ['Qual dedo / mão direita (PIMA)', 'não', 'Não observável. O app mostra só a indicação pedagógica, marcada como "guia".'],
   ['Hammer-on, pull-off, slide, bend, vibrato', 'não', 'Sem eventos próprios. Seriam inferidos por áudio (fora do escopo do MIDI).'],
 ];

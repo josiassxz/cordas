@@ -46,6 +46,9 @@ export class Guitar extends EventTarget {
     this.timer = null;
     this.device = null;
     this.sustainMs = 2500;   // a AG01 não manda note-off; a vibração é estimada por este tempo
+    this.pressed = new Map(); // corda -> casa segurada (CC 49/50 = nº da casa; sem sinal de "soltou")
+    this.pressTimers = new Map();
+    this.pressMs = 1200;
     this.decay = new Map();  // corda -> timeout do fim estimado da vibração
   }
 
@@ -98,7 +101,7 @@ export class Guitar extends EventTarget {
     if (d?.gatt?.connected) d.gatt.disconnect();
   }
 
-  releaseAll() { this.decay.forEach(clearTimeout); this.decay.clear(); this.active.clear(); this.emit('notes', { active: new Map(this.active) }); }
+  releaseAll() { this.pressTimers.forEach(clearTimeout); this.pressTimers.clear(); this.pressed.clear(); this.emit('unpress', { string: -1 }); this.decay.forEach(clearTimeout); this.decay.clear(); this.active.clear(); this.emit('notes', { active: new Map(this.active) }); }
 
   handle(m, t) {
     if (m.ch > 5 && m.type !== 'cc') return;
@@ -113,8 +116,19 @@ export class Guitar extends EventTarget {
     } else if (m.type === 'cc' && m.a === 123) {
       this.active.delete(m.ch); this.clearDecay(m.ch);
     }
+    if (m.type === 'cc' && (m.a === 49 || m.a === 50) && m.b >= 1) this.press(m.ch, m.b);
     if (m.type === 'cc') this.emit('cc', { string: m.ch, controller: m.a, value: m.b, t });
     this.emit('notes', { active: new Map(this.active) });
+  }
+
+  // Casa pressionada (mesmo sem palhetar). A AG01 só envia enquanto o dedo se move/aperta; some após pressMs.
+  press(ch, fret) {
+    if (ch > 5) return;
+    clearTimeout(this.pressTimers.get(ch));
+    const changed = this.pressed.get(ch) !== fret;
+    this.pressed.set(ch, fret);
+    if (changed) this.emit('press', { string: ch, fret });
+    this.pressTimers.set(ch, setTimeout(() => { this.pressed.delete(ch); this.emit('unpress', { string: ch }); }, this.pressMs));
   }
 
   clearDecay(ch) { clearTimeout(this.decay.get(ch)); this.decay.delete(ch); }
