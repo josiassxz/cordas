@@ -74,6 +74,9 @@
     <label class="field"><span class="row between">Casas no braço <output id="fretsOut" class="num"></output></span>
       <input type="range" id="stageFrets" min="12" max="24" step="1">
       <small>A AG01 reporta casas de 1 a 22.</small></label>
+    <label class="field"><span class="row between">Tempo da marca de casa pressionada <output id="pressOut" class="num"></output></span>
+      <input type="range" id="pressMs" min="300" max="6000" step="100">
+      <small>A guitarra só avisa enquanto você aperta ou move o dedo e não avisa quando solta. A marca some este tempo depois do último aviso.</small></label>
     <label class="field"><span class="row between">Duração da vibração da corda <output id="susOut" class="num"></output></span>
       <input type="range" id="sustainMs" min="500" max="8000" step="250">
       <small>A guitarra não avisa quando a corda para (só o palm mute, que silencia tudo). O app apaga a nota depois desse tempo.</small></label>
