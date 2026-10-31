@@ -277,7 +277,7 @@ export class Runner {
     for (let p = p0; p < Math.min(this.passes, p0 + 2); p++) {
       for (let i = 0; i < this.score.events.length; i++) {
         const ev = this.score.events[i];
-        if (!isScored(ev) || this.results.has(`${p}:${i}`)) continue;
+        if (!isScored(ev) || this.results.has(`${p}:${i}`) || this.evaluator?.states.get(`${p}:${i}`)?.firstBeat != null) continue;   // pula os que já começaram (palhetada em andamento)
         if (p * len + ev.beat >= pos - 0.3) return { ev, i, p, key: `${p}:${i}` };
       }
     }
