@@ -28,6 +28,6 @@
 .fb-res.ok circle{fill:none;stroke:var(--ok);stroke-width:3;animation:attack .7s var(--ease) forwards;transform-box:fill-box;transform-origin:center}
 .fb-res.bad circle{fill:none;stroke:var(--bad);stroke-width:3;animation:attack .7s var(--ease) forwards;transform-box:fill-box;transform-origin:center}
 
-/* casa pressionada (sem palhetar): anel tracejado branco com o nº da casa */
-.fb-press circle{fill:rgba(255,255,255,.1);stroke:#fff;stroke-width:2;stroke-dasharray:4 3}
-.fb-press text{fill:#fff;font:700 11px var(--font)}
+/* casa pressionada: mesmo visual da nota tocada (bolinha laranja, nota em preto) */
+.fb-press circle{fill:var(--c-live);stroke:none;filter:drop-shadow(0 0 7px rgba(245,165,36,.55))}
+.fb-press text{fill:#1b1200;font:800 11px var(--font);pointer-events:none}

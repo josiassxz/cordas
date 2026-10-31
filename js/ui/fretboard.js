@@ -135,7 +135,7 @@ export class Fretboard {
   press(string, fret) {
     this.unpress(string);
     const g = svg('g', { class: 'fb-press', transform: `translate(${this.cellX(fret)} ${this.rowY(string)})` }, this.layerPress);
-    svg('circle', { r: 12 }, g);
+    svg('circle', { r: 13 }, g);
     const note = this.tuning[string] + fret;
     svg('text', { 'text-anchor': 'middle', y: 4 }, g).textContent = noteName(note).replace(/\d/, '');
     g.append(Object.assign(svg('title'), { textContent: `Casa ${fret} pressionada (${noteName(note)})` }));
