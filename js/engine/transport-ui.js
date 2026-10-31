@@ -1,5 +1,6 @@
 // Barra de transporte reutilizável: Iniciar/Pausar/Continuar, Reiniciar, Parar, BPM, velocidade, repetição, guia, progresso.
 import { icon } from '../core/dom.js';
+import { validateMode } from './runner.js';
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25];
 const REPEATS = [['once', '1×'], [3, '3×'], ['loop', '∞']];
@@ -21,7 +22,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
         <label class="chip pr-toggle"><input type="checkbox" data-a="click" checked> Metrônomo</label>
         <label class="chip pr-toggle" title="Clique suave também nas subdivisões (e, &, a)"><input type="checkbox" data-a="subclick"> Subdivisões</label>
         <label class="chip pr-toggle"><input type="checkbox" data-a="guide"> Guia sonoro</label></div></div>
-      <div class="pr-pop-row"><span class="h3">Validação</span><label class="chip pr-toggle" title="Desligado: vale qualquer corda tocada na batida certa (só o tempo é avaliado)"><input type="checkbox" data-a="check" checked> Validar a corda certa</label></div>
+      <div class="pr-pop-row"><span class="h3">Validação</span><select data-a="validate" aria-label="Como validar"><option value="strings">Corda a corda</option><option value="chord">Pelo acorde</option><option value="neck">Pelo braço (casas apertadas)</option><option value="timing">Só o tempo</option></select></div>
       <div class="pr-pop-row"><span class="h3">Timing</span><button class="btn sm" data-a="sync" title="Medir o atraso entre você e o clique e ajustar a compensação">Sincronizar com a guitarra…</button></div>
     </div>
   </div>`;
@@ -38,7 +39,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
     $('[data-r=bpm] small').textContent = 'BPM' + base;
     const br = $('[data-a=bpmr]'); if (br && document.activeElement !== br) { br.value = run.bpm; br.style.setProperty('--p', ((run.bpm - br.min) / (br.max - br.min)) * 100 + '%'); }
     const sc = $('[data-a=subclick]'); if (sc) sc.checked = !!run.subClick;
-    const ck = $('[data-a=check]'); if (ck) ck.checked = run.evaluator ? !run.evaluator.free : run.deps.settings().checkStrings !== false;
+    const vs = $('[data-a=validate]'); if (vs) vs.value = run.evaluator ? run.evaluator.mode : validateMode(run.deps.settings());
   };
   const prog = () => {
     const f = run.progress, bar = $('.progress'); bar.firstElementChild.style.width = `${Math.round(f * 100)}%`; bar.setAttribute('aria-valuenow', Math.round(f * 100));
@@ -68,7 +69,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
     window.addEventListener('pointerup', end);
   });
   host.addEventListener('change', (e) => { if (e.target.dataset.a === 'subclick') run.setSubClick(e.target.checked);
-    if (e.target.dataset.a === 'check') { run.setCheckStrings(e.target.checked); paint(); } if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
+    if (e.target.dataset.a === 'validate') { run.setValidate(e.target.value); paint(); } if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
   const offs = [run.on('state', paint), run.on('tempo', paint), run.on('progress', prog), run.on('pass', prog)];
   const closePop = (e) => { const pop = $('.pr-pop'); if (pop && !pop.hidden && !e.target.closest?.('.pr-pop, .pr-gear')) { pop.hidden = true; $('.pr-gear')?.setAttribute('aria-expanded', 'false'); } };
   document.addEventListener('pointerdown', closePop);

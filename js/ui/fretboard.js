@@ -87,7 +87,8 @@ export class Fretboard {
       svg('circle', { r: it.fret === 0 ? 8 : 12 }, g);
       if (it.finger && it.fret > 0) svg('text', { 'text-anchor': 'middle', y: 4.5 }, g).textContent = it.finger;
       it.el = g;
-      if (this.pressedFret?.get(it.string) === it.fret) this.showNote(it, true);
+      const pf = this.pressedFret?.get(it.string);
+      if (pf === it.fret) this.showNote(it, true); else if (pf != null && it.fret > 0) g.classList.add('wrongpress');
     }
   }
   clearExpected() { this.setExpected([]); }
@@ -148,6 +149,7 @@ export class Fretboard {
     this.unpress(string);
     (this.pressedFret ??= new Map()).set(string, fret);
     this.expected.filter((e) => e.string === string && e.fret === fret).forEach((e) => this.showNote(e, true));
+    this.expected.filter((e) => e.string === string && e.fret !== fret && e.fret > 0).forEach((e) => e.el?.classList.add('wrongpress'));
     const g = svg('g', { class: 'fb-press', transform: `translate(${this.cellX(fret)} ${this.rowY(string)})` }, this.layerPress);
     svg('circle', { r: 13 }, g);
     const note = this.tuning[string] + fret;
@@ -157,7 +159,7 @@ export class Fretboard {
   }
   unpress(string) {
     const strs = string < 0 ? [...(this.pressedFret?.keys() || [])] : [string];
-    for (const s of strs) { this.expected.filter((e) => e.string === s && this.pressedFret?.get(s) === e.fret).forEach((e) => this.showNote(e, false)); this.pressedFret?.delete(s); }
+    for (const s of strs) { this.expected.filter((e) => e.string === s && this.pressedFret?.get(s) === e.fret).forEach((e) => this.showNote(e, false)); this.expected.filter((e) => e.string === s).forEach((e) => e.el?.classList.remove('wrongpress')); this.pressedFret?.delete(s); }
     if (string < 0) { this.layerPress.replaceChildren(); this.pressEls?.clear(); return; }
     this.pressEls?.get(string)?.remove(); this.pressEls?.delete(string);
   }

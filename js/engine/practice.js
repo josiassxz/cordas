@@ -17,7 +17,7 @@ export function installPractice(app) {
 
 function startPractice(app, score, opts = {}) {
   app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
-  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setCheckStrings: (on) => app.store.set('settings.checkStrings', on) };
+  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setValidate: (m) => app.store.set('settings.validate', m) };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;
@@ -93,7 +93,7 @@ function mountUI(app, run, opts) {
       if (r.grade !== 'miss') {
         setFlash(`${MSG[r.grade]}${r.delta != null && Math.abs(r.delta) > 12 ? ` · ${r.delta > 0 ? 'atrasado' : 'adiantado'} ${Math.abs(Math.round(r.delta))} ms` : ''}${r.dirOk === false ? ' · direção diferente' : ''}`, r.grade);
         if (r.delta != null) { const lim = Math.min(200, 60000 / run.effectiveBpm / run.score.subdivision * 0.45); needle.style.opacity = 1; needle.style.left = `${50 + clamp(r.delta / lim, -1, 1) * 50}%`; }
-      } else setFlash('Perdeu essa', 'miss');
+      } else setFlash(r.why?.text || 'Perdeu essa', 'miss');
       if (app.stage) {
         const u = run.score.events[r.i]; if (!u) return;
         const items = stagePositions(u).map((p) => ({ ...p, state: r.strings[p.string] === 'ok' ? 'hit' : 'miss' }));
@@ -104,9 +104,10 @@ function mountUI(app, run, opts) {
     run.on('feedback', (f) => {
       counts.extra += f.type === 'extra' || f.type === 'avoid' ? 1 : 0; if (f.type === 'extra' || f.type === 'avoid') paintStats();
       const off = app.store.get('settings.pitchOffset', 0), fret = clamp(fretOf(f.string, f.note, off), 0, 15);
-      if (f.type === 'hit' && f.tail) { /* resto da palhetada: já contou */ }
+      if (f.type === 'wrongNeck') { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.why?.text || 'Montagem diferente do pedido', 'bad'); }
+      else if (f.type === 'hit' && f.tail) { /* resto da palhetada: já contou */ }
       else if (f.type === 'hit') app.stage?.flash(f.string, f.fret ?? fret, 'ok');
-      else { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.type === 'wrongPitch' ? 'Corda certa, nota errada' : f.type === 'avoid' ? 'Essa corda deveria ficar de fora' : app.store.get('settings.checkStrings') === false ? 'Fora do tempo' : 'Corda errada', 'bad'); }
+      else { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.type === 'wrongPitch' ? 'Corda certa, nota errada' : f.type === 'avoid' ? 'Essa corda deveria ficar de fora' : app.store.get('settings.validate', 'strings') !== 'strings' ? 'Fora do tempo' : 'Corda errada', 'bad'); }
     }),
     run.on('attempt', (a) => { if (a.ok) setFlash('Acertou!', 'perfect'); else setFlash(a.missing.length ? `Faltou a corda ${a.missing.map((s) => 6 - s).join(', ')}` : a.avoid.length ? 'Tem corda tocando que devia ficar de fora' : a.wrongPitch.length ? 'Nota errada' : 'Quase — confira o braço', 'bad'); }),
     run.on('finish', (s) => showSummary(s)),

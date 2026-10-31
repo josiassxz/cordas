@@ -33,5 +33,6 @@
 .fb-press text{fill:#1b1200;font:800 11px var(--font);pointer-events:none}
 
 /* marcador esperado que está sendo pressionado agora: laranja com a nota em preto */
-.fb-exp.pressed circle{fill:var(--c-live);stroke:var(--c-live)}
-.fb-exp.pressed text{fill:#1b1200;font-weight:800}
+.fb-exp.pressed circle{fill:rgba(61,220,151,.75);stroke:var(--ok)}
+.fb-exp.pressed text{fill:#04180e;font-weight:800}
+.fb-exp.wrongpress circle{fill:rgba(255,99,112,.28);stroke:var(--bad);stroke-dasharray:3 3}

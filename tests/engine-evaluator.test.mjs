@@ -175,3 +175,39 @@ test('sem validar corda: as outras cordas da mesma palhetada não viram "extra";
   assert.equal(ev.extras, 0, 'a palhetada inteira não gera extras');
   assert.equal(ev.noteOn({ string: 2, note: 50, beat: 2.5 })[0].type, 'extra', 'fora do tempo continua sendo extra');
 });
+
+const em = { id: 'em', title: 'Em', bpm: 100, lengthBeats: 4, events: [{ beat: 0, strum: { dir: 'D', strings: [0, 1, 2, 3, 4, 5], frets: [0, 2, 2, 0, 0, 0] } }] };
+const strumNotes = (ev, notes) => notes.forEach((n, i) => ev.noteOn({ string: i, note: n, beat: 0.01 + i * 0.04 }));
+
+test('validação pelo ACORDE: acorde certo em qualquer corda passa; acorde diferente falha com explicação', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const sc = normalizeScore(em);
+  const good = new Evaluator(sc, { validate: 'chord', passes: 1 });
+  strumNotes(good, [40, 47, 52, 55, 59, 64]);                         // E B E G B E = Em
+  const rg = good.advance(10); assert.equal(rg.length, 1); assert.notEqual(rg[0].grade, 'miss'); assert.equal(rg[0].why, null);
+  const bad = new Evaluator(sc, { validate: 'chord', passes: 1 });
+  strumNotes(bad, [41, 48, 53, 57, 60, 65]);                          // F C F A C F = Fm: terça diferente
+  const rb = bad.advance(10); assert.equal(rb[0].grade, 'miss'); assert.match(rb[0].why.text, /Acorde diferente do pedido/);
+  assert.equal(bad.noteOn({ string: 0, note: 40, beat: 3.9 })[0].type, 'extra', 'fora do tempo continua extra');
+});
+
+test('validação pelo BRAÇO: casas apertadas = digitação pedida (mais o tempo)', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const sc = normalizeScore(em);
+  let neck = new Map([[1, 2], [2, 2]]);                               // A casa 2 e D casa 2 = Em
+  const ev = new Evaluator(sc, { validate: 'neck', passes: 1, neck: () => neck });
+  assert.equal(ev.noteOn({ string: 0, note: 40, beat: 0.01 })[0].type, 'hit');
+  const ok = ev.advance(10); assert.notEqual(ok[0].grade, 'miss');
+  neck = new Map([[1, 3], [2, 2]]);                                   // corda A na casa errada
+  const ev2 = new Evaluator(sc, { validate: 'neck', passes: 1, neck: () => neck });
+  const fb = ev2.noteOn({ string: 0, note: 40, beat: 0.01 })[0];
+  assert.equal(fb.type, 'wrongNeck'); assert.match(fb.why.text, /Corda 5: você apertou a casa 3, o pedido é a 2/);
+  assert.equal(ev2.advance(10)[0].grade, 'miss');
+  neck = new Map();                                                   // nada apertado
+  const ev3 = new Evaluator(sc, { validate: 'neck', passes: 1, neck: () => neck });
+  assert.match(ev3.noteOn({ string: 0, note: 40, beat: 0.01 })[0].why.text, /Falta apertar a corda 5, casa 2/);
+  const ev4 = new Evaluator(sc, { validate: 'neck', passes: 1, neck: () => null });   // sem sensor (demo): só o tempo
+  assert.equal(ev4.noteOn({ string: 0, note: 40, beat: 0.01 })[0].type, 'hit');
+});
