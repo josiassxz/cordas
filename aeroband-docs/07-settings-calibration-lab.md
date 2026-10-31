@@ -105,7 +105,7 @@ Buttons: **Limpar** (Clear) and **Exportar captura** (Export capture, downloads 
 The player strums the six **open** strings. The lab compares each pitch to E-A-D-G-B-E and shows the difference in semitones per string (the *Δ* column). **Medir última palhetada** reads the last strum; **Aplicar desvio** (enabled when all strings agree) stores a single global offset used **only** for note validation. It was added after the one-semitone-low observation; frets drawn are never offset.
 
 ### 3.3 Sound monitor ("Monitor de som")
-Added to diagnose "ghost metronome" reports. It shows, every 100 ms:
+Added to inspect the audio-clock state live. It shows, every 100 ms:
 - an output level bar read from an audio analyser on the app's **master output** — "SOM SAINDO" (sound playing) or "silêncio";
 - the audio context state, **how many metronome clocks are alive** and their state/BPM, the exercise state, and the output latency reported by the browser.
 
@@ -143,5 +143,5 @@ The app was structured for more than one instrument from the start: an instrumen
 4. **A visible diagnostics screen** (live event log, raw hex, strum direction, a sound-level monitor). *Why:* shortens support conversations ("what does your guitar send?") and lets enthusiasts help with testing. *Feasibility:* app-only, an afternoon of work.
 5. **Explain every setting in one sentence under it**, including what it does *not* change. *Why:* fewer support questions, safer experimentation.
 6. **Default to beginner-friendly validation, expose the strict options as a progression** ("turn the sound check on as you improve"). *Why:* a beginner who strums six strings should not be told the chord is wrong.
-7. **Export a capture file** from the diagnostics screen. *Why:* owners can attach a real capture to a bug report.
+7. **Export a capture file** from the diagnostics screen. *Why:* owners can attach a real capture when sharing feedback.
 8. **Instrument switcher placeholder** — showing the roadmap (acoustic, bass, ukulele, piano) in the UI makes the platform story visible early.
