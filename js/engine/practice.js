@@ -17,7 +17,7 @@ export function installPractice(app) {
 
 function startPractice(app, score, opts = {}) {
   app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
-  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setTolerance: (t) => app.store.set('settings.timingTolerance', t), setValidation: ({ neck, sound }) => { if (neck != null) app.store.set('settings.validateNeck', neck); if (sound != null) app.store.set('settings.validateSound', sound); } };
+  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setTolerance: (t) => app.store.set('settings.timingTolerance', t), setDirMode: (m) => app.store.set('settings.validateDir', m), setValidation: ({ neck, sound }) => { if (neck != null) app.store.set('settings.validateNeck', neck); if (sound != null) app.store.set('settings.validateSound', sound); } };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;
@@ -97,7 +97,7 @@ function mountUI(app, run, opts) {
       const nm = run.chordAt?.(r.beat)?.chordId;
       counts[r.grade] = (counts[r.grade] || 0) + 1; paintStats();
       if (r.grade !== 'miss') {
-        if (r.heardName && nm && r.heardName.replace(/\s/g, '') !== nm.replace(/\s/g, '')) setFlash(`✓ Conta como ${nm} (você fez ${r.heardName})`, r.grade); else
+        if (r.dirOk === false && r.grade !== 'miss') setFlash(`${MSG[r.grade]} · direção diferente do pedido`, r.grade); else if (r.heardName && nm && r.heardName.replace(/\s/g, '') !== nm.replace(/\s/g, '')) setFlash(`✓ Conta como ${nm} (você fez ${r.heardName})`, r.grade); else
         setFlash(`${MSG[r.grade]}${r.delta != null && Math.abs(r.delta) > 12 ? ` · ${r.delta > 0 ? 'atrasado' : 'adiantado'} ${Math.abs(Math.round(r.delta))} ms` : ''}${r.dirOk === false ? ' · direção diferente' : ''}`, r.grade);
         if (r.delta != null) { const lim = Math.min(200, 60000 / run.effectiveBpm / run.score.subdivision * 0.45); needle.style.opacity = 1; needle.style.left = `${50 + clamp(r.delta / lim, -1, 1) * 50}%`; }
       } else setFlash(r.why?.text || 'Perdeu essa', 'miss');

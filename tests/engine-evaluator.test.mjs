@@ -274,3 +274,25 @@ test('palhetada REAL da AG01 (cordas chegam espaçadas até 0,66 s): todas as co
     assert.equal(e.extras, 0, `${label}: sem notas "extras"`);
   }
 });
+
+test('direção ↓/↑ lida pela ordem das cordas: desligada, rebaixa (padrão) ou exige', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const { dirOfOrder } = await import('../js/music/theory.js');
+  assert.equal(dirOfOrder([0, 1, 2, 3, 4, 5]), 'D'); assert.equal(dirOfOrder([5, 4, 3, 2, 1, 0]), 'U');
+  assert.equal(dirOfOrder([0, 1]), null, 'com 2 cordas não dá para saber'); assert.equal(dirOfOrder([2, 0, 3, 1]), null, 'ordem confusa não conta');
+  const sc = (dir) => normalizeScore({ id: 'd' + dir, title: 't', bpm: 80, lengthBeats: 4, events: [{ beat: 0, strum: { dir, strings: [0, 1, 2, 3, 4, 5], frets: [0, 2, 2, 0, 0, 0] }, check: { dir: true } }] });
+  const play = (want, played, opts) => {
+    const e = new Evaluator(sc(want), { passes: 1, ...opts }), order = played === 'D' ? [0, 1, 2, 3, 4, 5] : [5, 4, 3, 2, 1, 0];
+    order.forEach((s, i) => e.noteOn({ string: s, note: [40, 47, 52, 55, 59, 64][s], beat: 0.02 + i * 0.08 }));
+    return e.advance(10)[0];
+  };
+  for (const extra of [{}, { sound: 'off' }, { sound: 'chord' }]) {                // corda a corda, só tempo e pelo acorde
+    assert.notEqual(play('D', 'D', extra).grade, 'miss', 'direção certa passa');
+    assert.equal(play('D', 'U', { dirMode: 'strict', ...extra }).grade, 'miss', `exigir: ↑ no lugar de ↓ erra (${JSON.stringify(extra)})`);
+    assert.match(play('D', 'U', { dirMode: 'strict', ...extra }).why.text, /Direção errada: o pedido era ↓, você fez ↑/);
+    const soft = play('D', 'U', { dirMode: 'soft', ...extra }); assert.notEqual(soft.grade, 'miss'); assert.equal(soft.dirOk, false); assert.notEqual(soft.grade, 'perfect', 'rebaixa');
+    assert.notEqual(play('D', 'U', { dirMode: 'off', ...extra }).grade, 'miss', 'desligado: não confere');
+    assert.notEqual(play('U', 'U', { dirMode: 'strict', ...extra }).grade, 'miss', 'palhetada para cima pedida e feita');
+  }
+});

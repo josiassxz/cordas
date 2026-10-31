@@ -29,3 +29,13 @@ test('CC 49 aperta e CC 50 solta a casa (ordem das cordas invertida)', () => {
   assert.equal(g.pressed.size, 0);
   assert.deepEqual(ev, [['p', 1, 3], ['u', 1]]);
 });
+
+test('palhetada: direção pela ordem das cordas e corte de 260 ms entre cordas', async () => {
+  const g = new Guitar(), out = []; g.addEventListener('strum', (e) => out.push([e.detail.dir, e.detail.order.join('')]));
+  const play = (order, gap) => order.forEach((s, i) => setTimeout(() => g.handle({ type: 'noteon', ch: s, a: 40 + s, b: 40 }, 0), i * gap));
+  play([0, 1, 2, 3, 4, 5], 200);                 // 0,2 s entre cordas (como na guitarra real): continua UMA palhetada
+  await new Promise((r) => setTimeout(r, 1900));
+  play([5, 4, 3, 2, 1, 0], 60);
+  await new Promise((r) => setTimeout(r, 700));
+  assert.deepEqual(out, [['D', '012345'], ['U', '543210']]);
+});

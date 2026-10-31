@@ -119,7 +119,7 @@ export function startShell(app, views) {
     $('#stageScale').value = S('stageScale'); $('#stageOut').textContent = S('stageScale') + '%';
     $('#stageFrets').value = S('stageFrets'); $('#fretsOut').textContent = S('stageFrets');
     $('#sustainMs').value = S('sustainMs'); $('#susOut').textContent = (S('sustainMs') / 1000).toFixed(1) + ' s';
-    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); { const v = validationOf(store.get('settings')); $('#vNeck').checked = v.neck; $('#vSound').value = v.sound; $('#tolerance').value = store.get('settings.timingTolerance') || 'normal'; } $('#auto').checked = S('auto');
+    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); { const v = validationOf(store.get('settings')); $('#vNeck').checked = v.neck; $('#vSound').value = v.sound; $('#tolerance').value = store.get('settings.timingTolerance') || 'normal'; $('#vDir').value = store.get('settings.validateDir') || 'soft'; } $('#auto').checked = S('auto');
     $$('input[type=range]', dlg).forEach(fillRange); dlg.showModal();
   });
   const fillRange = (r) => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%');
@@ -132,6 +132,7 @@ export function startShell(app, views) {
 
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });
+  $('#vDir').addEventListener('change', (e) => store.set('settings.validateDir', e.target.value));
   $('#tolerance').addEventListener('change', (e) => store.set('settings.timingTolerance', e.target.value));
   $('#vNeck').addEventListener('change', (e) => store.set('settings.validateNeck', e.target.checked));
   $('#vSound').addEventListener('change', (e) => store.set('settings.validateSound', e.target.value));

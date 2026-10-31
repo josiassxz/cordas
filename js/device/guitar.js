@@ -1,7 +1,7 @@
 // Conexão BLE MIDI com a Aeroband, parser de pacotes e detecção de palhetadas.
 // SEGURANÇA: este módulo é SOMENTE LEITURA. Nunca chama writeValue*/SysEx. A única escrita é o
 // startNotifications() padrão do navegador (habilita notificações). Há um teste que garante isso.
-import { detectChord } from '../music/theory.js';
+import { detectChord, dirOfOrder } from '../music/theory.js';
 
 export const MIDI_SERVICE = '03b80e5a-ede8-4b33-a751-6ce34ec4c700';
 export const MIDI_CHAR = '7772e5db-3868-4112-a1a9-f2669d106bf3';
@@ -174,8 +174,8 @@ export class Guitar extends EventTarget {
     const c = this.cluster; this.cluster = null;
     if (!c) return;
     const notes = c.notes.map((n) => n.note);
-    const dir = c.notes.length < 2 ? 'S' : (c.notes[0].string <= c.notes[c.notes.length - 1].string ? 'D' : 'U');
-    this.emit('strum', { t: c.t, notes, dir, count: notes.length, chord: detectChord(notes) });
+    const order = c.notes.map((n) => n.string), dir = dirOfOrder(order) || 'S';   // 'S' = não dá para saber (poucas cordas ou ordem confusa)
+    this.emit('strum', { t: c.t, notes, dir, order, count: notes.length, chord: detectChord(notes) });
   }
 
   // ---- Demo: simula palhetadas sem guitarra ----

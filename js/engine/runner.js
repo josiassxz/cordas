@@ -48,7 +48,7 @@ export class Runner {
   start() {
     this.reset();
     const st = this.deps.settings();
-    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, tolerance: st.timingTolerance || 'normal', neckOn: validationOf(st).neck, sound: validationOf(st).sound, neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
+    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, tolerance: st.timingTolerance || 'normal', dirMode: st.validateDir || 'soft', neckOn: validationOf(st).neck, sound: validationOf(st).sound, neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
     this.attach(true);
     if (this.mode === 'wait') {
       this.waitList = this.score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -103,6 +103,7 @@ export class Runner {
   setBpm(v) { this.bpm = clamp(Math.round(v), 20, 300); this.transport?.setBpm(this.bpm); this.evaluator?.setTempo(this.effectiveBpm); this.emit('tempo', { bpm: this.bpm, speed: this.speed }); }
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
+  setDirMode(m) { if (this.evaluator) this.evaluator.dirMode = m; this.deps.setDirMode?.(m); }
   setTolerance(t) { if (this.evaluator) this.evaluator.tol = TOLERANCE[t] ?? 1; this.deps.setTolerance?.(t); }
   setValidation({ neck, sound }) { const e = this.evaluator; if (e) { if (neck != null) e.neckOn = neck; if (sound != null) { e.sound = sound; e.free = sound !== 'strings'; } } this.deps.setValidation?.({ neck, sound }); }
   // Compasso (tempos por compasso) e batidas por tempo: o exercício é REFEITO na nova grade e recomeça (tablaturas só mudam a grade).
@@ -185,12 +186,14 @@ export class Runner {
     this.collect(this.evaluator.drain());
   }
 
-  onStrum() {
+  onStrum(e) {
     if (this.mode !== 'wait' || this._state !== 'running' || this.finished) return;
     const buf = this.waitBuf; this.waitBuf = [];
     const w = this.waitList[this.waitIdx]; if (!w || !buf.length) return;
     const st = this.deps.settings();
     const a = evalAttempt(w.ev, buf, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal' });
+    const wantDir = w.ev.strum?.dir, gotDir = e?.dir;   // direção medida pela ordem das cordas
+    if (a.ok && (st.validateDir || 'soft') === 'strict' && wantDir && (gotDir === 'D' || gotDir === 'U') && gotDir !== wantDir) { a.ok = false; a.dirWrong = { want: wantDir, got: gotDir }; }
     this.emit('attempt', { ...a, tries: this.waitTries, index: this.waitIdx });
     if (!a.ok) { this.waitTries++; return; }
     const grade = this.waitTries === 0 ? 'perfect' : this.waitTries === 1 ? 'good' : 'ok';

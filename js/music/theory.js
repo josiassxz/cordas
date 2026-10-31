@@ -78,3 +78,16 @@ export const STRING_COUNT = 6;
 export const fretOf = (string, note, offset = 0, strings = STANDARD) => note - strings[string] - offset;
 export const noteAt = (string, fret, offset = 0, strings = STANDARD) => strings[string] + fret + offset;
 export const STRING_LABELS = ['E', 'A', 'D', 'G', 'B', 'E'];
+
+// Direção da palhetada pela ORDEM em que as cordas chegam: cordas em ordem crescente (grave→agudo) = para baixo ('D'),
+// decrescente = para cima ('U'). Precisa de 3+ cordas diferentes; senão (ou se a ordem for confusa) devolve null.
+export function dirOfOrder(order) {
+  const o = [...new Set(order)];
+  if (o.length < 3) return null;
+  let asc = 0, desc = 0;
+  for (let i = 0; i < o.length; i++) for (let j = i + 1; j < o.length; j++) { if (o[i] < o[j]) asc++; else desc++; }
+  if (asc >= desc * 2) return 'D';
+  if (desc >= asc * 2) return 'U';
+  return null;
+}
+export const dirArrow = (d) => (d === 'D' ? '↓' : d === 'U' ? '↑' : '·');

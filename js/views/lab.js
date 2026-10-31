@@ -38,7 +38,7 @@ export default {
     const on = (e) => { const { string, note, vel, t } = e.detail; line(t, `corda ${string + 1} (${STRING_LABELS[string]}) ON  ${noteName(note)} (${note}) vel ${vel}  traste≈${fretOf(string, note, 0)}`); strumBuf.push({ string, note }); };
     const offE = (e) => line(e.detail.t, `corda ${e.detail.string + 1} OFF ${noteName(e.detail.note)}`);
     const cc = (e) => line(e.detail.t, `CC ${e.detail.controller} = ${e.detail.value}  (canal ${e.detail.string + 1})`);
-    const strum = (e) => { lastStrum = strumBuf; strumBuf = []; renderMap(); };
+    const strum = (e) => { line(e.detail.t, `PALHETADA ${{ D: '↓ (para baixo)', U: '↑ (para cima)', S: '· direção não detectada' }[e.detail.dir]} — ordem das cordas: ${(e.detail.order || []).map((x) => x + 1).join(' ')} — ${e.detail.count} cordas`); lastStrum = strumBuf; strumBuf = []; renderMap(); };
     for (const [n, f] of [['raw', raw], ['noteon', on], ['noteoff', offE], ['cc', cc], ['strum', strum]]) app.guitar.addEventListener(n, f);
 
     function renderMap() {

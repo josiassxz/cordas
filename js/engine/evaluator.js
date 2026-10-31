@@ -1,6 +1,6 @@
 // Avaliador puro: compara notas recebidas do dispositivo (corda, nota, posição em batidas) com o Score.
 // Sem DOM, sem relógio: o chamador informa a posição `beat` de cada nota (Transport.beatAtPerf).
-import { STANDARD, matchChord, pcName, detectChord } from '../music/theory.js';
+import { STANDARD, matchChord, pcName, detectChord, dirOfOrder, dirArrow } from '../music/theory.js';
 import { expectedStrings, expectedPitch, isScored } from './score.js';
 
 export const GRADE_WEIGHT = { perfect: 1, good: 0.75, ok: 0.45, miss: 0 };
@@ -30,6 +30,7 @@ export class Evaluator {
     const old = { strings: [false, 'strings'], chord: [false, 'chord'], neck: [true, 'off'], timing: [false, 'off'] }[o.validate || (o.checkStrings === false ? 'timing' : 'strings')];
     this.neckOn = o.neckOn ?? old[0]; this.sound = o.sound ?? old[1]; this.free = this.sound !== 'strings';
     this.tol = TOLERANCE[o.tolerance] ?? 1;
+    this.dirMode = o.dirMode || 'soft';   // 'off' não confere ↓/↑ · 'soft' (padrão) rebaixa a nota · 'strict' direção errada = erro
     this.neck = o.neck || null;   // () => Map(corda -> casa apertada) | null (sem sensor)
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -69,7 +70,7 @@ export class Evaluator {
         // sem validar corda: as demais cordas da MESMA palhetada chegam depois da 1ª e não são "extras"
         if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat - this.toBeats(20) && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40) && beat - (st.lastNote ?? st.firstBeat) <= this.toBeats(260) && !st.order.includes(string)) tail ||= st;   // a MESMA corda de novo = palhetada nova   // continua a mesma palhetada: a corda seguinte chega até 260 ms depois da anterior
         if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
-        if (this.free) { if (this.sound === 'chord' && st.firstBeat != null && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.heard?.some((h) => h.string === string))) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = st.firstBeat != null ? 0 : Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
+        if (this.free) { if (this.deferred(st.ev) && st.firstBeat != null && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.heard?.some((h) => h.string === string))) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = st.firstBeat != null ? 0 : Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
         if (!expectedStrings(st.ev).includes(string)) { near = true; continue; }
         const m = st.matched.get(string);
@@ -89,7 +90,10 @@ export class Evaluator {
       if (st.firstBeat == null) st.firstBeat = beat;
       st.lastNote = beat; st.order.push(string);
       const nr = this.neckOn ? this.neckCheck(st.ev) : { ok: true };
-      if (this.sound === 'chord') { st.neckRes ??= nr; (st.heard ||= []).push({ string, note }); return [{ type: 'hit', string, note, key: st.key }]; }   // avalia quando a palhetada terminar (advance)
+      if (this.deferred(st.ev)) {
+        const first = !st.heard?.length; st.neckRes ??= nr; (st.heard ||= []).push({ string, note });
+        return [{ type: first && !nr.ok ? 'wrongNeck' : 'hit', string, note, key: st.key, why: first && !nr.ok ? nr.why : undefined }];   // montagem errada avisa já na 1ª corda; o resultado sai ao fim da palhetada
+      }   // avalia quando a palhetada terminar (advance)
       if (nr.ok) for (const x of exp) st.matched.set(x, { ok: true, note, beat });
       else st.why = nr.why;
       this.resolve(st);
@@ -114,7 +118,7 @@ export class Evaluator {
       if (k >= this.events.length) { this.cursor = { p: p + 1, k: 0 }; continue; }
       const st = this.stateOf(p, k);
       if (!st.resolved) {
-        if (this.sound === 'chord' && st.heard?.length && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.beat + this.endB(st.ev) < beat)) this.resolveChord(st);
+        if (this.deferred(st.ev) && st.heard?.length && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.beat + this.endB(st.ev) < beat)) this.resolveChord(st);
         else { if (st.beat + this.endB(st.ev) >= beat) break; this.resolve(st); }
       }
       this.cursor.k++;
@@ -123,6 +127,8 @@ export class Evaluator {
   }
   drain() { const out = this.pending; this.pending = []; return out; }
 
+  // Resolver só quando a palhetada terminar: acorde pelo som, ou direção ↓/↑ (precisa ver as cordas na ordem)
+  deferred(ev) { return this.sound === 'chord' || (this.dirMode !== 'off' && ev.kind === 'strum' && ev.strum?.dir && ev.check.dir && expectedStrings(ev).length >= 3); }
   // ---- validação pelo ACORDE: variações contam como o acorde pedido ----
   // O que define o acorde é a raiz + a terça (ou a 2ª/4ª nos suspensos) + a sétima, se o pedido tiver. Notas a mais
   // (add9, baixo diferente como /E, quinta dobrada…) NÃO tiram o acerto: C pedido e Cadd9/E tocado = C certo.
@@ -137,7 +143,7 @@ export class Evaluator {
     for (const x of [10, 11]) if (rel.has(x)) essential.add(x);                          // sétima, se o pedido a tem
     const missing = [...essential].filter((r) => !P.has((rootPc + r) % 12));
     let ok;
-    if (rootPc == null) ok = true;
+    if (this.sound !== 'chord' || rootPc == null) ok = true;
     else if (this.rigor === 'root') ok = P.has(rootPc) && (want.length < 2 || P.size >= 2);
     else ok = missing.length === 0;
     const nk = st.neckRes && !st.neckRes.ok ? st.neckRes : null;
@@ -169,9 +175,14 @@ export class Evaluator {
       grade = ev.check.timing && delta != null ? gradeOf(Math.abs(delta), this.win) : 'perfect';
       if (coverage < 1) grade = coverage < 0.5 ? 'miss' : capOk(grade);
       if (st.avoid) grade = capOk(grade);
-      const order = st.order.filter((s) => st.matched.get(s)?.ok);
-      if (order.length >= 2) { dir = order[0] <= order[order.length - 1] ? 'D' : 'U'; }
-      if (ev.check.dir && ev.strum?.dir && dir) { dirOk = dir === ev.strum.dir; if (!dirOk && grade === 'perfect') grade = 'good'; }
+      dir = dirOfOrder(st.order.filter((s) => st.matched.get(s)?.ok));   // null = não dá para saber (poucas cordas)
+      if (this.dirMode !== 'off' && ev.check.dir && ev.strum?.dir && dir) {
+        dirOk = dir === ev.strum.dir;
+        if (!dirOk) {
+          if (this.dirMode === 'strict') { grade = 'miss'; st.why ||= { type: 'dir', text: `Direção errada: o pedido era ${dirArrow(ev.strum.dir)}, você fez ${dirArrow(dir)}` }; }
+          else if (grade === 'perfect') grade = 'good';
+        }
+      }
     }
     if (st.neckRes && !st.neckRes.ok && grade !== 'miss') { grade = 'miss'; st.why = st.neckRes.why; }
     const strings = {};

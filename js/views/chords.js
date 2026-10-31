@@ -142,6 +142,9 @@ export default {
             <div class="ch-strs" id="chStrs" aria-label="Resultado por corda"></div>
             <div><div class="progress" title="Acertos seguidos"><i style="width:${Math.min(100, st.streak / 3 * 100)}%"></i></div>
               <small class="dim">${mastered(S.symbol) ? 'Dominado — continue para manter a prática' : `Acerte ${3 - st.streak} ${3 - st.streak === 1 ? 'vez' : 'vezes'} seguidas para dominar`}</small></div>
+            <div class="row wrap" style="gap:8px"><span class="dim">Direção da palhetada:</span>
+              <div class="seg" role="group" aria-label="Direção pedida">${[['', 'Qualquer'], ['D', '↓ Baixo'], ['U', '↑ Cima'], ['alt', '↓↑ Alternar']].map(([k, n]) => `<button class="${(S.dirWant || '') === k ? 'on' : ''}" data-dirwant="${k}">${n}</button>`).join('')}</div>
+              ${S.dirWant === 'alt' ? `<span class="chip">Agora: <b>${(S.altNext || 'D') === 'D' ? '↓' : '↑'}</b></span>` : ''}</div>
             <div class="row wrap" style="gap:8px"><span class="dim">Sequência:</span>
               <div class="seg" role="group">${[['essentials', 'Essenciais'], ['favorites', 'Favoritos'], ['voicings', 'Digitações deste acorde']].map(([k, n]) => `<button class="${S.queue === k ? 'on' : ''}" data-queue="${k}">${n}</button>`).join('')}</div></div>
           </div></div></div>`;
@@ -176,6 +179,8 @@ export default {
       if (!fb) return;
       const notes = [...played.values()];
       const r = matchVoicing(notes, v, store.get('settings.rigor', 'normal'));
+      const wantDir = S.dirWant === 'alt' ? (S.altNext || 'D') : S.dirWant, gotDir = s.dir, A = (x) => (x === 'D' ? '↓' : x === 'U' ? '↑' : '·');
+      const dirBad = !!wantDir && (gotDir === 'D' || gotDir === 'U') && gotDir !== wantDir;   // 'S' = direção não detectada: não penaliza
       const diff = diffByString(v, played);
       const st = { ...stat(S.symbol) }; st.tries++; session.tries++;
       const states = {};
@@ -188,14 +193,16 @@ export default {
       });
       renderStrings(diff);
       clearTimeout(timer);
-      if (r.ok) {
+      if (r.ok && !dirBad) {
+        if (S.dirWant === 'alt') { S.altNext = (S.altNext || 'D') === 'D' ? 'U' : 'D'; }
         st.ok++; st.streak++; session.ok++; store.set('chords.' + S.symbol, st);
-        fb.className = 'ch-fb ok'; fb.innerHTML = `<span>✓ Isso! ${esc(v.name)}${st.streak >= 3 ? ' — dominado ★' : ''}</span>`;
+        fb.className = 'ch-fb ok'; fb.innerHTML = `<span>✓ Isso! ${esc(v.name)}${gotDir === 'D' || gotDir === 'U' ? ` ${A(gotDir)}` : ''}${st.streak >= 3 ? ' — dominado ★' : ''}</span>`;
         $('.progress i', el).style.width = Math.min(100, st.streak / 3 * 100) + '%';
         if (store.get('settings.auto', true)) timer = setTimeout(() => !S.paused && next(), 1700);
       } else {
         st.streak = 0; store.set('chords.' + S.symbol, st);
         const why = r.missing.length ? `faltou ${r.missing.join(', ')}` : `sobrou ${r.extra.join(', ')}`;
+        if (r.ok && dirBad) { fb.className = 'ch-fb bad'; fb.innerHTML = `<span>Acorde certo, mas a <b>direção</b> está errada: pedido ${A(wantDir)}, você fez ${A(gotDir)}. Tente de novo.</span>`; timer = setTimeout(() => { idleMsg(); renderStrings(null); showOnStage(v); }, 3200); return; }
         fb.className = 'ch-fb bad'; fb.innerHTML = `<span>${s.chord ? `Ouvi <b>${esc(s.chord.name)}</b>` : 'Não reconheci o acorde'} — ${why}. Tente de novo.</span>`;
         $('.progress i', el).style.width = '0';
         timer = setTimeout(() => { idleMsg(); renderStrings(null); showOnStage(v); }, 3200);
@@ -305,6 +312,7 @@ export default {
       else if (d.tag) { S.tag = S.tag === d.tag ? null : d.tag; S.vi = 0; renderLibrary(); }
       else if ('favonly' in d) { S.favOnly = !S.favOnly; renderLibrary(); }
       else if (d.queue) { S.queue = d.queue; renderListen(); }
+      else if ('dirwant' in d) { S.dirWant = d.dirwant; S.altNext = 'D'; renderListen(); }
       else if (d.kind) { S.drillKind = d.kind; renderDrills(); }
       else if (d.pair) { [S.drill.a, S.drill.b] = d.pair.split('|'); renderDrills(); }
       else if (d.preset != null) { S.drill.preset = +d.preset; renderDrills(); }
