@@ -211,3 +211,25 @@ test('validação pelo BRAÇO: casas apertadas = digitação pedida (mais o temp
   const ev4 = new Evaluator(sc, { validate: 'neck', passes: 1, neck: () => null });   // sem sensor (demo): só o tempo
   assert.equal(ev4.noteOn({ string: 0, note: 40, beat: 0.01 })[0].type, 'hit');
 });
+
+test('Ré maior tocado nas 6 cordas: montagem certa passa mesmo com o som "Dadd9/E"; som por acorde/corda a corda exigem mais', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  // D: cordas 3,4,5 (D G B E agudo) em [0,2,3,2] -> pedido toca só as 4 de cima; o aluno toca as 6 (E e A soltas a mais)
+  const d = normalizeScore({ id: 'd', title: 'D', bpm: 100, lengthBeats: 4, events: [{ beat: 0, strum: { dir: 'D', strings: [2, 3, 4, 5], frets: [-1, -1, 0, 2, 3, 2] } }] });
+  const neck = new Map([[3, 2], [4, 3], [5, 2]]);
+  const six = [40, 45, 50, 57, 62, 66];                                  // E A D A' D' F# = o que soa nas 6 cordas
+  const play = (opts) => { const e = new Evaluator(d, { passes: 1, neck: () => neck, ...opts }); six.forEach((n, i) => e.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 })); return e.advance(10); };
+  const a = play({ neckOn: true, sound: 'off' }); assert.equal(a.length, 1); assert.notEqual(a[0].grade, 'miss', 'montagem certa = acerto');
+  assert.equal(a[0].why, null);
+  const b = play({ neckOn: true, sound: 'chord', rigor: 'strict' }); assert.equal(b[0].grade, 'miss', 'rigor estrito: as cordas soltas a mais mudam o acorde');
+  const c = play({ neckOn: true, sound: 'strings' }); assert.ok(c.length >= 1);
+  const wrongNeck = new Map([[3, 2], [4, 3]]);                           // falta o dedo da corda 1
+  const e2 = new Evaluator(d, { passes: 1, neck: () => wrongNeck, neckOn: true, sound: 'off' }); six.forEach((n, i) => e2.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 }));
+  assert.equal(e2.advance(10)[0].grade, 'miss', 'montagem errada falha mesmo com o som dentro do tempo');
+  // neck + som por acorde: montagem errada derruba, montagem certa + acorde certo passa
+  const e3 = new Evaluator(d, { passes: 1, neck: () => wrongNeck, neckOn: true, sound: 'chord' }); [50, 57, 62, 66].forEach((n, i) => e3.noteOn({ string: i + 2, note: n, beat: 0.01 + i * 0.03 }));
+  assert.equal(e3.advance(10)[0].grade, 'miss');
+  const e4 = new Evaluator(d, { passes: 1, neck, neckOn: true, sound: 'chord' }); e4.neck = () => neck; [50, 57, 62, 66].forEach((n, i) => e4.noteOn({ string: i + 2, note: n, beat: 0.01 + i * 0.03 }));
+  assert.notEqual(e4.advance(10)[0].grade, 'miss');
+});

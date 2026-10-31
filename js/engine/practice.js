@@ -1,6 +1,6 @@
 // app.practice: inicia um Score num Runner e (se houver `host`) monta pista + transporte + feedback + resumo.
 // Também mostra as posições esperadas (e acertos/erros por corda) no braço do palco (app.stage).
-import { Runner } from './runner.js';
+import { Runner, validationOf } from './runner.js';
 import { Highway } from './highway.js';
 import { Lane } from './lane.js';
 import { mountTransport } from './transport-ui.js';
@@ -17,7 +17,7 @@ export function installPractice(app) {
 
 function startPractice(app, score, opts = {}) {
   app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
-  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setValidate: (m) => app.store.set('settings.validate', m) };
+  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setValidation: ({ neck, sound }) => { if (neck != null) app.store.set('settings.validateNeck', neck); if (sound != null) app.store.set('settings.validateSound', sound); } };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;
@@ -62,6 +62,8 @@ function mountUI(app, run, opts) {
   const hw = new (vertical ? Lane : Highway)(cv, () => ({ score: run.score, pos: run.position(), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
   hw.start();
   const tr = mountTransport($('.pr-bar'), run);
+  let montage = null;   // { text, t }: acorde cuja MONTAGEM no braço foi aprovada (o som pode ter cordas soltas a mais)
+  app.chordLabel = () => (montage && performance.now() - montage.t < 2500 ? montage.text : null);
   const counts = { perfect: 0, good: 0, ok: 0, miss: 0, extra: 0 };
   let holdUntil = 0, lastKey = null, flashTimer;
 
@@ -89,6 +91,8 @@ function mountUI(app, run, opts) {
     run.on('state', () => { paintState(); lastKey = null; syncStage(); }),
     run.on('progress', syncStage),
     run.on('result', (r) => {
+      const nm = run.chordAt?.(r.beat)?.chordId;
+      if (nm && validationOf(app.store.get('settings')).neck && r.grade !== 'miss' && app.guitar.status === 'connected') { montage = { text: `${nm} ✓`, t: performance.now() }; const lab = document.getElementById('stageChord'); if (lab) lab.textContent = montage.text; }
       counts[r.grade] = (counts[r.grade] || 0) + 1; paintStats();
       if (r.grade !== 'miss') {
         setFlash(`${MSG[r.grade]}${r.delta != null && Math.abs(r.delta) > 12 ? ` · ${r.delta > 0 ? 'atrasado' : 'adiantado'} ${Math.abs(Math.round(r.delta))} ms` : ''}${r.dirOk === false ? ' · direção diferente' : ''}`, r.grade);
@@ -107,7 +111,7 @@ function mountUI(app, run, opts) {
       if (f.type === 'wrongNeck') { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.why?.text || 'Montagem diferente do pedido', 'bad'); }
       else if (f.type === 'hit' && f.tail) { /* resto da palhetada: já contou */ }
       else if (f.type === 'hit') app.stage?.flash(f.string, f.fret ?? fret, 'ok');
-      else { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.type === 'wrongPitch' ? 'Corda certa, nota errada' : f.type === 'avoid' ? 'Essa corda deveria ficar de fora' : app.store.get('settings.validate', 'strings') !== 'strings' ? 'Fora do tempo' : 'Corda errada', 'bad'); }
+      else { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.type === 'wrongPitch' ? 'Corda certa, nota errada' : f.type === 'avoid' ? 'Essa corda deveria ficar de fora' : validationOf(app.store.get('settings')).sound !== 'strings' ? 'Fora do tempo' : 'Corda errada', 'bad'); }
     }),
     run.on('attempt', (a) => { if (a.ok) setFlash('Acertou!', 'perfect'); else setFlash(a.missing.length ? `Faltou a corda ${a.missing.map((s) => 6 - s).join(', ')}` : a.avoid.length ? 'Tem corda tocando que devia ficar de fora' : a.wrongPitch.length ? 'Nota errada' : 'Quase — confira o braço', 'bad'); }),
     run.on('finish', (s) => showSummary(s)),
@@ -133,5 +137,5 @@ function mountUI(app, run, opts) {
     if (ap) { const v = clamp(app.store.get('settings.latency', 0) + +ap.dataset.apply, 0, 250); app.store.set('settings.latency', v); app.toast(`Latência ajustada para ${v} ms`); ap.remove(); }
   });
   paintState(); paintStats(); syncStage();
-  return { destroy() { offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
+  return { destroy() { app.chordLabel = null; offs.forEach((f) => f()); hw.stop(); tr.destroy(); host.innerHTML = ''; clearTimeout(flashTimer); } };
 }

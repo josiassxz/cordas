@@ -19,9 +19,12 @@ export class Evaluator {
   constructor(score, o = {}) {
     this.score = score; this.len = score.lengthBeats;
     this.passes = o.passes ?? Infinity; this.offset = o.pitchOffset ?? 0; this.rigor = o.rigor ?? 'normal';
-    // Modos de validação: 'strings' = corda a corda · 'chord' = as notas tocadas formam o acorde pedido (qualquer corda)
-    // · 'neck' = as casas APERTADAS no braço são as do acorde pedido · 'timing' = só o tempo da batida.
-    this.mode = o.validate || (o.checkStrings === false ? 'timing' : 'strings'); this.free = this.mode !== 'strings';
+    // Validação em duas partes independentes (o tempo da batida sempre conta):
+    //   neckOn  = conferir a MONTAGEM no braço (casas apertadas = digitação pedida; usa os sensores de casa)
+    //   sound   = 'off' (não confere o som) · 'chord' (as notas tocadas formam o acorde pedido) · 'strings' (corda a corda)
+    // `validate` ('strings'|'chord'|'neck'|'timing') é o atalho antigo.
+    const old = { strings: [false, 'strings'], chord: [false, 'chord'], neck: [true, 'off'], timing: [false, 'off'] }[o.validate || (o.checkStrings === false ? 'timing' : 'strings')];
+    this.neckOn = o.neckOn ?? old[0]; this.sound = o.sound ?? old[1]; this.free = this.sound !== 'strings';
     this.neck = o.neck || null;   // () => Map(corda -> casa apertada) | null (sem sensor)
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -54,9 +57,9 @@ export class Evaluator {
       for (let k = 0; k < this.events.length; k++) {
         const st = this.stateOf(p, k);
         // sem validar corda: as demais cordas da MESMA palhetada chegam depois da 1ª e não são "extras"
-        if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40)) tail ||= st;
+        if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat - this.toBeats(20) && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40)) tail ||= st;
         if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
-        if (this.free) { if (this.mode === 'chord' && st.firstBeat != null && beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60)) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
+        if (this.free) { if (this.sound === 'chord' && st.firstBeat != null && beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60)) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
         if (!expectedStrings(st.ev).includes(string)) { near = true; continue; }
         const m = st.matched.get(string);
@@ -75,18 +78,18 @@ export class Evaluator {
       const st = best, exp = expectedStrings(st.ev);
       if (st.firstBeat == null) st.firstBeat = beat;
       st.order.push(string);
-      if (this.mode === 'chord') { (st.heard ||= []).push({ string, note }); return [{ type: 'hit', string, note, key: st.key }]; }   // avalia quando a palhetada terminar (advance)
-      let ok = true;
-      if (this.mode === 'neck') { const r = this.neckCheck(st.ev); ok = r.ok; if (!ok) st.why = r.why; }
-      if (ok) for (const x of exp) st.matched.set(x, { ok: true, note, beat });
+      const nr = this.neckOn ? this.neckCheck(st.ev) : { ok: true };
+      if (this.sound === 'chord') { st.neckRes ??= nr; (st.heard ||= []).push({ string, note }); return [{ type: 'hit', string, note, key: st.key }]; }   // avalia quando a palhetada terminar (advance)
+      if (nr.ok) for (const x of exp) st.matched.set(x, { ok: true, note, beat });
+      else st.why = nr.why;
       this.resolve(st);
-      return [{ type: ok ? 'hit' : 'wrongNeck', string, note, key: st.key, why: st.why }];
+      return [{ type: nr.ok ? 'hit' : 'wrongNeck', string, note, key: st.key, why: st.why }];
     }
     const exp = expectedPitch(best.ev, string, this.offset, this.tuning);
     const checked = best.ev.check.pitch && exp != null && (best.ev.kind === 'note' || this.rigor === 'strict');
     const pitchOk = !checked || note === exp;
     best.matched.set(string, { ok: pitchOk, note, beat });
-    if (pitchOk && best.firstBeat == null) best.firstBeat = beat;   // o tempo conta a partir da 1ª nota CORRETA
+    if (pitchOk && best.firstBeat == null) { best.firstBeat = beat; if (this.neckOn) best.neckRes = this.neckCheck(best.ev); }   // o tempo conta a partir da 1ª nota CORRETA
     best.order.push(string);
     const fb = [{ type: pitchOk ? 'hit' : 'wrongPitch', string, note, expectedNote: exp, key: best.key }];
     if (expectedStrings(best.ev).every((s) => best.matched.get(s)?.ok)) this.resolve(best);
@@ -101,7 +104,7 @@ export class Evaluator {
       if (k >= this.events.length) { this.cursor = { p: p + 1, k: 0 }; continue; }
       const st = this.stateOf(p, k);
       if (!st.resolved) {
-        if (this.mode === 'chord' && st.heard?.length && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.beat + this.endB(st.ev) < beat)) this.resolveChord(st);
+        if (this.sound === 'chord' && st.heard?.length && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.beat + this.endB(st.ev) < beat)) this.resolveChord(st);
         else { if (st.beat + this.endB(st.ev) >= beat) break; this.resolve(st); }
       }
       this.cursor.k++;
@@ -121,7 +124,9 @@ export class Evaluator {
     else if (this.rigor === 'root') ok = P.has(rootPc) && (E.size < 2 || P.size >= 2);
     else if (this.rigor === 'strict') ok = !missing.length && !extra.length;
     else ok = P.has(rootPc) && missing.length <= 1 && extra.length <= 1;
-    if (ok) for (const x of exp) st.matched.set(x, { ok: true, note: 0, beat: st.firstBeat });
+    const nk = st.neckRes && !st.neckRes.ok ? st.neckRes : null;
+    if (ok && !nk) for (const x of exp) st.matched.set(x, { ok: true, note: 0, beat: st.firstBeat });
+    else if (nk) st.why = nk.why;
     else st.why = { type: 'chord', text: `Acorde diferente do pedido${missing.length ? ` — faltou ${missing.map(pcName).join(', ')}` : ''}${extra.length ? `${missing.length ? ';' : ' —'} sobrou ${extra.map(pcName).join(', ')}` : ''}` };
     return this.resolve(st);
   }
@@ -151,6 +156,7 @@ export class Evaluator {
       if (order.length >= 2) { dir = order[0] <= order[order.length - 1] ? 'D' : 'U'; }
       if (ev.check.dir && ev.strum?.dir && dir) { dirOk = dir === ev.strum.dir; if (!dirOk && grade === 'perfect') grade = 'good'; }
     }
+    if (st.neckRes && !st.neckRes.ok && grade !== 'miss') { grade = 'miss'; st.why = st.neckRes.why; }
     const strings = {};
     for (const s of exp) { const m = st.matched.get(s); strings[s] = m ? (m.ok ? 'ok' : 'pitch') : 'miss'; }
     const r = { key: st.key, p: st.p, i: st.i, beat: st.beat, grade, delta, coverage, dirOk, dir, strings, avoid: st.avoid, stringsOk: okStrings.length, stringsTotal: exp.length, timed: !!ev.check.timing, why: st.why || null };

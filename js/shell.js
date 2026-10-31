@@ -3,6 +3,7 @@ import { $, $$, icon, paintIcons, toast } from './core/dom.js';
 import { Fretboard, bindGuitar } from './ui/fretboard.js';
 import { bindDiagramPress } from './ui/chord-diagram.js';
 import { openSync } from './engine/sync.js';
+import { validationOf } from './engine/runner.js';
 import { INSTRUMENTS, STANDARD, detectChord, noteName, setFlats } from './music/theory.js';
 
 export function startShell(app, views) {
@@ -60,7 +61,7 @@ export function startShell(app, views) {
   guitar.addEventListener('notes', (e) => {
     const act = e.detail.active, notes = [...act.entries()].sort((a, b) => a[0] - b[0]).map(([, n]) => n);
     const ch = notes.length >= 2 ? detectChord(notes) : null;
-    $('#stageChord').textContent = ch ? ch.name : notes.length === 1 ? noteName(notes[0]) : '—';
+    $('#stageChord').textContent = app.chordLabel?.() || (ch ? ch.name : notes.length === 1 ? noteName(notes[0]) : '—');
     $('#stageNotes').textContent = notes.map(noteName).join(' ');
   });
   guitar.addEventListener('noteon', (e) => { if (store.get('settings.synth') && guitar.status === 'connected') audio.pluck(e.detail.note, audio.context.currentTime, 0.15 + 0.4 * Math.min(1, e.detail.vel / 100)); });
@@ -113,7 +114,7 @@ export function startShell(app, views) {
     $('#stageScale').value = S('stageScale'); $('#stageOut').textContent = S('stageScale') + '%';
     $('#stageFrets').value = S('stageFrets'); $('#fretsOut').textContent = S('stageFrets');
     $('#sustainMs').value = S('sustainMs'); $('#susOut').textContent = (S('sustainMs') / 1000).toFixed(1) + ' s';
-    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); $('#validate').value = S('validate') || (S('checkStrings') === false ? 'timing' : 'strings'); $('#auto').checked = S('auto');
+    $('#rigor').value = S('rigor'); $('#flats').value = S('flats') ? '1' : '0'; $('#synth').checked = S('synth'); { const v = validationOf(store.get('settings')); $('#vNeck').checked = v.neck; $('#vSound').value = v.sound; } $('#auto').checked = S('auto');
     $$('input[type=range]', dlg).forEach(fillRange); dlg.showModal();
   });
   const fillRange = (r) => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%');
@@ -125,7 +126,8 @@ export function startShell(app, views) {
   $('#syncBtn').addEventListener('click', () => { dlg.close(); openSync(app); });
   $('#rigor').addEventListener('change', (e) => store.set('settings.rigor', e.target.value));
   $('#flats').addEventListener('change', (e) => { store.set('settings.flats', e.target.value === '1'); setFlats(e.target.value === '1'); render(); });
-  $('#validate').addEventListener('change', (e) => store.set('settings.validate', e.target.value));
+  $('#vNeck').addEventListener('change', (e) => store.set('settings.validateNeck', e.target.checked));
+  $('#vSound').addEventListener('change', (e) => store.set('settings.validateSound', e.target.value));
   $('#synth').addEventListener('change', (e) => store.set('settings.synth', e.target.checked));
   $('#auto').addEventListener('change', (e) => store.set('settings.auto', e.target.checked));
   $('#resetBtn').addEventListener('click', () => { if (confirm('Apagar todo o progresso salvo neste navegador? (Os ajustes são mantidos.)')) { store.reset(['settings']); dlg.close(); render(); } });

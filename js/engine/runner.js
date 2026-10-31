@@ -6,7 +6,12 @@ import { Evaluator, evalAttempt, GRADE_WEIGHT } from './evaluator.js';
 import { normalizeScore, isScored, expectedStrings, expectedPitch, expectedFret } from './score.js';
 import { matchChord, detectChord, noteAt } from '../music/theory.js';
 
-export const validateMode = (st) => st.validate || (st.checkStrings === false ? 'timing' : 'strings');
+// Validação escolhida: { neck: conferir a montagem no braço, sound: 'off' | 'chord' | 'strings' }. Migra as opções antigas.
+export function validationOf(st = {}) {
+  if (st.validateNeck != null || st.validateSound != null) return { neck: st.validateNeck !== false, sound: st.validateSound || 'off' };
+  const old = { strings: [false, 'strings'], chord: [false, 'chord'], neck: [true, 'off'], timing: [false, 'off'] }[st.validate || (st.checkStrings === false ? 'timing' : null) || 'neck'];
+  return { neck: old[0], sound: old[1] };
+}
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const parseRepeat = (r) => (r === 'loop' || r === Infinity ? Infinity : r === 'once' || r == null ? 1 : Math.max(1, Math.floor(+r) || 1));
 const GUIDE_AHEAD = 0.08;     // s de antecedência para agendar o som-guia (curto: pausa o respeita)
@@ -43,7 +48,7 @@ export class Runner {
   start() {
     this.reset();
     const st = this.deps.settings();
-    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, validate: validateMode(st), neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
+    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, neckOn: validationOf(st).neck, sound: validationOf(st).sound, neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
     this.attach(true);
     if (this.mode === 'wait') {
       this.waitList = this.score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -97,7 +102,7 @@ export class Runner {
   setBpm(v) { this.bpm = clamp(Math.round(v), 20, 300); this.transport?.setBpm(this.bpm); this.evaluator?.setTempo(this.effectiveBpm); this.emit('tempo', { bpm: this.bpm, speed: this.speed }); }
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
-  setValidate(mode) { if (this.evaluator) { this.evaluator.mode = mode; this.evaluator.free = mode !== 'strings'; } this.deps.setValidate?.(mode); }
+  setValidation({ neck, sound }) { const e = this.evaluator; if (e) { if (neck != null) e.neckOn = neck; if (sound != null) { e.sound = sound; e.free = sound !== 'strings'; } } this.deps.setValidation?.({ neck, sound }); }
   setClick(on) { this.click = !!on; if (this.transport) this.transport.click = !!on; }
   setSubClick(on) { this.subClick = !!on; if (this.transport) this.transport.subClick = !!on; }
   setClickVolume(v) { this.clickVolume = v; this.transport?.setVolume(v); }

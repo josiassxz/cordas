@@ -83,9 +83,10 @@
       <select id="rigor"><option value="root">Leve — basta a nota raiz</option><option value="normal">Normal — raiz e terça certas</option><option value="strict">Estrito — só as notas do acorde</option></select></label>
     <label class="field"><span>Notação</span>
       <select id="flats"><option value="0">Sustenidos (C#, F#)</option><option value="1">Bemóis (Db, Gb)</option></select></label>
-    <label class="field"><span>Validação dos exercícios</span>
-      <select id="validate"><option value="strings">Corda a corda — corda e nota certas, no tempo</option><option value="chord">Pelo acorde — as notas tocadas formam o acorde pedido (qualquer corda)</option><option value="neck">Pelo braço — as casas apertadas são as do acorde pedido</option><option value="timing">Só o tempo da batida</option></select>
-      <small>“Pelo braço” usa os sensores de casa da guitarra (não vale no modo demo).</small></label>
+    <div class="field"><span>Validação dos exercícios <small class="dim">(o tempo da batida sempre conta)</small></span>
+      <label class="row"><input type="checkbox" id="vNeck"><span><b>Montagem no braço</b> — conferir se as casas apertadas são as do acorde pedido (usa os sensores de casa; ignora as cordas soltas que soarem a mais)</span></label>
+      <label class="field" style="margin-top:6px"><span>Som que chega</span><select id="vSound"><option value="off">Não conferir o som (iniciante: pode tocar todas as cordas)</option><option value="chord">Pelo acorde — as notas tocadas formam o acorde pedido</option><option value="strings">Corda a corda — só as cordas pedidas, nas notas certas</option></select></label>
+      <small>Conforme você evolui, ligue o som para exigir o acorde (ou as cordas) certo.</small></div>
     <label class="row"><input type="checkbox" id="synth"><span>Tocar som no navegador quando a guitarra soar</span></label>
     <label class="row"><input type="checkbox" id="auto"><span>Avançar sozinho após acertar um acorde</span></label>
     <div class="row between" style="margin-top:6px">
