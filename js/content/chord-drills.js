@@ -71,7 +71,18 @@ export function voicingChangeDrill(symbol, o = {}) {
   return { sequence: [open, moved], score: drillFromVoicings([open, moved], { title: `${open.name}: ${open.shape ? 'forma ' + open.shape : 'aberta'} ↔ ${moved.baseFret}ª casa`, ...opts(o) }) };
 }
 
+// MONTAGEM de acorde: um evento por acorde; o aluno levanta a mão, monta as casas, segura `hold` s (e palheta, se `strum`).
+// `items`: símbolos ou { symbol, vid }.
+export function assembleDrill(items, o = {}) {
+  const seq = items.map((it) => (typeof it === 'string' ? pickVoicing(it) : (it.vid && voicingsOf(it.symbol).find((v) => v.id === it.vid)) || pickVoicing(it.symbol)));
+  const hold = o.hold ?? 0.3, strum = !!o.strum, base = drillFromVoicings(seq, { title: o.title || `Montagem: ${seq.map((v) => v.name).join(' – ')}`, beatsPerChord: o.beatsPerChord ?? 4, rounds: o.rounds ?? 2, bpm: o.bpm ?? 50, mode: 'wait' });
+  const score = { ...base, mode: 'timed', id: `asm:${seq.map((v) => v.id).join('>')}:${o.beatsPerChord ?? 4}x${o.rounds ?? 2}:h${hold}${strum ? 's' : ''}`, assemble: { hold, strum } };
+  score.events = base.events.map((e, i) => { const v = seq[i % seq.length]; return { ...e, strum: { ...e.strum, frets: v.frets.slice(), fingers: v.fingers.slice() }, check: { strings: true, pitch: false, timing: true, dir: false } }; });
+  return { sequence: seq, score };
+}
+
 export const DRILL_KINDS = [
+  { id: 'assemble', name: 'Montagem de acorde', hint: 'Levante a mão e monte cada acorde no tempo (usa os sensores de casa)' },
   { id: 'pair', name: 'Troca de dois acordes', hint: 'Alterne A ↔ B até a troca ficar limpa' },
   { id: 'progression', name: 'Progressão', hint: 'Sequências reais de música' },
   { id: 'custom', name: 'Minha sequência', hint: 'Escolha os acordes que quiser, na ordem que quiser' },
@@ -82,6 +93,7 @@ export const DRILL_KINDS = [
 export function buildDrill(kind, params = {}) {
   if (kind === 'pair') return changeDrill(params.a, params.b, params);
   if (kind === 'progression' || kind === 'custom') return progressionDrill(params.symbols, params);
+  if (kind === 'assemble') return assembleDrill(params.symbols, params);
   if (kind === 'positions') return positionDrill(params.symbol, params);
   if (kind === 'voicings') return voicingChangeDrill(params.symbol, params);
   throw new Error(`Tipo de exercício desconhecido: ${kind}`);

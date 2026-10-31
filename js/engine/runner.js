@@ -76,7 +76,7 @@ export class Runner {
 
   attach(on) {
     const g = this.deps.guitar; if (!g) return;
-    const fns = [['noteon', (e) => this.onNote(e.detail)], ['strum', (e) => this.onStrum(e.detail)]];
+    const fns = [['noteon', (e) => this.onNote(e.detail)], ['strum', (e) => this.onStrum(e.detail)], ['press', () => this.onNeck()], ['unpress', () => this.onNeck()]];
     if (on === true) { this.handlers = fns; fns.forEach(([t, f]) => g.addEventListener(t, f)); }
     else { this.handlers?.forEach(([t, f]) => g.removeEventListener(t, f)); this.handlers = null; }
   }
@@ -203,6 +203,12 @@ export class Runner {
     this.collect(this.evaluator.drain());
   }
 
+  // casa apertada/solta: alimenta o exercício de montagem de acorde (a posição vem do relógio, já com a compensação de latência)
+  onNeck() {
+    if (this.finished || !this.evaluator?.asm || !this.transport || !['running', 'countin'].includes(this._state)) return;
+    const beat = this.transport.beatAtPerf(performance.now()); if (beat == null) return;
+    this.evaluator.neckUpdate(beat); this.collect(this.evaluator.drain());
+  }
   onStrum(e) {
     if (this.mode !== 'wait' || this._state !== 'running' || this.finished) return;
     const buf = this.waitBuf; this.waitBuf = [];

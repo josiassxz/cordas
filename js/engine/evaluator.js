@@ -31,7 +31,9 @@ export class Evaluator {
     this.neckOn = o.neckOn ?? old[0]; this.sound = o.sound ?? old[1]; this.free = this.sound !== 'strings';
     this.tol = TOLERANCE[o.tolerance] ?? 1;
     this.dirMode = o.dirMode || 'soft';   // 'off' não confere ↓/↑ · 'soft' (padrão) rebaixa a nota · 'strict' direção errada = erro
-    this.neck = o.neck || null;   // () => Map(corda -> casa apertada) | null (sem sensor)
+    this.neck = o.neck || null;
+    this.asm = score.assemble || null;   // exercício de MONTAGEM de acorde (levantar a mão, montar, segurar)
+    this.lastLift = -Infinity; this.prevComplete = -Infinity;   // () => Map(corda -> casa apertada) | null (sem sensor)
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
     this.gapOf = new Map(this.events.map((x, k) => { const nx = this.events[(k + 1) % this.events.length].ev, g = nx.beat - x.ev.beat; return [x.ev, g > 1e-6 ? g : (this.len - x.ev.beat + this.events[0].ev.beat) || this.len]; }));
@@ -59,6 +61,7 @@ export class Evaluator {
 
   // Registra uma nota ligada. Devolve o feedback imediato: [{type:'hit'|'wrongPitch'|'avoid'|'extra', string, note, key?, expectedNote?}]
   noteOn({ string, note, beat }) {
+    if (this.asm) return this.asmNote(beat);
     if (!this.events.length) return [];
     const okB = this.toBeats(this.win.ok);
     if (beat < this.events[0].ev.beat - okB) return [];
@@ -112,6 +115,7 @@ export class Evaluator {
 
   // Finaliza (como perdidos ou parciais) os eventos cuja janela já expirou antes de `beat`. Devolve os resultados.
   advance(beat) {
+    if (this.asm) { this.asmTick(beat); const o = this.pending; this.pending = []; return o; }
     const okB = this.toBeats(this.win.ok);
     while (this.cursor.p < this.passes) {
       const { p, k } = this.cursor;
@@ -162,6 +166,63 @@ export class Evaluator {
       if (got !== f) return { ok: false, why: { type: 'neck', text: got == null ? `Falta apertar a corda ${6 - x}, casa ${f}` : `Corda ${6 - x}: você apertou a casa ${got}, o pedido é a ${f}` } };
     }
     return { ok: true };
+  }
+
+  // ================= MONTAGEM DE ACORDE =================
+  // Para cada acorde (um evento por acorde): 1) levantar a mão (nenhuma casa apertada) depois do acorde anterior;
+  // 2) montar exatamente as casas do acorde; 3) segurar `hold` s; 4) (opcional) palhetar. O TEMPO vale pelo instante em que a
+  // montagem ficou certa (a janela de acerto é a mesma dos outros exercícios). Precisa dos sensores de casa (CC 49/50).
+  // casas do acorde por corda (-1 = não toca): vêm de strum.frets ou, nos exercícios de troca de acordes, de `notes`
+  asmFrets(ev) {
+    if (ev.strum?.frets) return ev.strum.frets;
+    const f = Array(6).fill(-1); for (const n of ev.notes || []) f[n.string] = n.fret; return f;
+  }
+  asmNeed(ev) { return this.asmFrets(ev).map((fr, s) => [s, fr]).filter(([, fr]) => fr > 0); }
+  asmCorrect(ev, nk) {
+    const f = this.asmFrets(ev);
+    for (const [s, fr] of this.asmNeed(ev)) if (nk.get(s) !== fr) return false;
+    for (const [s] of nk) if (f[s] === 0) return false;   // corda que deveria ficar solta está apertada
+    return true;
+  }
+  asmWhy(ev, nk, liftOk) {
+    if (!liftOk) return { type: 'lift', text: 'Levante a mão antes de montar o próximo acorde' };
+    const f = this.asmFrets(ev);
+    for (const [s, fr] of this.asmNeed(ev)) { const got = nk.get(s); if (got == null) return { type: 'asm', text: `Falta apertar a corda ${6 - s}, casa ${fr}` }; if (got !== fr) return { type: 'asm', text: `Corda ${6 - s}: você apertou a casa ${got}, o pedido é a ${fr}` }; }
+    for (const [s, g] of nk) if (f[s] === 0) return { type: 'asm', text: `A corda ${6 - s} deveria ficar solta (você apertou a casa ${g})` };
+    return { type: 'asm', text: 'Montagem diferente do pedido' };
+  }
+  neckUpdate(beat) { this.asmTick(beat); }
+  asmNote(beat) { for (const st of this.asmActive ? [this.asmActive] : []) if (st.held && !st.strummed) { st.strummed = true; this.asmTick(beat); } return []; }
+  asmTick(beat) {
+    const okB = this.toBeats(this.win.ok), holdB = this.toBeats((this.asm.hold ?? 0.3) * 1000), nk = this.neck?.();
+    if (nk && nk.size === 0) this.lastLift = beat;
+    while (this.cursor.p < this.passes) {
+      const { p, k } = this.cursor;
+      if (k >= this.events.length) { this.cursor = { p: p + 1, k: 0 }; continue; }
+      const st = this.stateOf(p, k);
+      if (st.resolved) { this.cursor.k++; continue; }
+      this.asmActive = st;
+      if (!nk) {   // sem sensor (modo demo): não dá para conferir a montagem; resolve no tempo como "no limite" avisando
+        if (beat < st.beat) return;
+        st.firstBeat = st.beat + okB * 0.9; for (const x of expectedStrings(st.ev)) st.matched.set(x, { ok: true, note: 0, beat });
+        st.why = { type: 'nosensor', text: 'Sem sensor de casas: montagem não conferida' }; this.resolve(st); this.prevComplete = beat; this.cursor.k++; continue;
+      }
+      const first = p === 0 && k === 0, liftOk = first || this.lastLift > this.prevComplete;
+      const correct = liftOk && this.asmCorrect(st.ev, nk);
+      if (!st.held) {
+        if (correct) { st.est ??= beat; if (beat - st.est >= holdB) { st.held = true; st.complete = st.est; } } else st.est = null;
+      }
+      if (st.held && (!this.asm.strum || st.strummed)) {
+        st.firstBeat = st.complete; for (const x of expectedStrings(st.ev)) st.matched.set(x, { ok: true, note: 0, beat: st.complete });
+        this.resolve(st); this.prevComplete = beat; this.cursor.k++; continue;
+      }
+      const lateEst = beat > st.beat + okB && st.est == null, lateStrum = st.held && this.asm.strum && beat > st.beat + okB + holdB + (st.ev.dur || 1);
+      if (lateEst || lateStrum) {
+        st.why = lateStrum ? { type: 'asm', text: 'Montou, mas faltou palhetar' } : this.asmWhy(st.ev, nk, liftOk);
+        this.resolve(st); this.prevComplete = beat; this.cursor.k++; continue;
+      }
+      return;   // só um acorde por vez está "ativo"
+    }
   }
 
   resolve(st) {

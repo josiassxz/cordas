@@ -296,3 +296,56 @@ test('direção ↓/↑ lida pela ordem das cordas: desligada, rebaixa (padrão)
     assert.notEqual(play('U', 'U', { dirMode: 'strict', ...extra }).grade, 'miss', 'palhetada para cima pedida e feita');
   }
 });
+
+test('MONTAGEM de acorde: levantar a mão, montar certo e segurar; sem levantar, casa errada, palhetada opcional/obrigatória e sem sensor', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const chord = (beat, frets) => ({ beat, dur: 4, strum: { dir: 'D', strings: frets.map((f, s) => (f >= 0 ? s : -1)).filter((s) => s >= 0), frets, fingers: [0, 0, 0, 0, 0, 0] }, check: { strings: true, pitch: false, timing: true, dir: false } });
+  const EM = [0, 2, 2, 0, 0, 0], AM = [-1, 0, 2, 2, 1, 0];                    // Em: corda 5(A)=2, 4(D)=2 | Am: corda 4(D)=2, 3(G)=2, 2(B)=1
+  const score = (strum = false) => normalizeScore({ id: 'asm', title: 'm', bpm: 60, beatsPerBar: 4, subdivision: 2, lengthBeats: 8, mode: 'timed', assemble: { hold: 0.3, strum }, events: [chord(0, EM), chord(4, AM)] });
+  const mk = (strum, neckRef) => new Evaluator(score(strum), { passes: 1, neck: () => neckRef.m });
+  const press = (...pairs) => new Map(pairs);
+  // 1) fluxo certo: monta Em perto do tempo 0, levanta a mão, monta Am no tempo 4
+  let nk = { m: press() }; let e = mk(false, nk);
+  e.neckUpdate(0); nk.m = press([1, 2], [2, 2]); e.neckUpdate(0.05); e.advance(0.2); assert.equal(e.results.length, 0, 'ainda não segurou 0,3 s');
+  e.advance(0.4); assert.equal(e.results.length, 1); assert.notEqual(e.results[0].grade, 'miss'); assert.ok(Math.abs(e.results[0].delta - 50) < 1, 'tempo = instante em que a montagem ficou certa (+50 ms)');
+  nk.m = press(); e.neckUpdate(2); e.advance(2.1);                              // levantou a mão
+  nk.m = press([2, 2], [3, 2], [4, 1]); e.neckUpdate(3.9); e.advance(4.5);
+  assert.equal(e.results.length, 2); assert.notEqual(e.results[1].grade, 'miss'); assert.ok(e.results[1].delta < 0, 'montou 100 ms antes: adiantado');
+  // 2) não levantou a mão entre os acordes: erro com a explicação
+  nk = { m: press() }; e = mk(false, nk);
+  nk.m = press([1, 2], [2, 2]); e.neckUpdate(0); e.advance(0.5); assert.equal(e.results[0].grade !== 'miss', true);
+  nk.m = press([2, 2], [3, 2], [4, 1]); e.neckUpdate(3.9); e.advance(5);       // trocou os dedos direto, sem soltar tudo
+  assert.equal(e.results[1].grade, 'miss'); assert.match(e.results[1].why.text, /Levante a mão/);
+  // 3) casa errada
+  nk = { m: press() }; e = mk(false, nk); nk.m = press([1, 3], [2, 2]); e.neckUpdate(0); e.advance(2);
+  assert.equal(e.results[0].grade, 'miss'); assert.match(e.results[0].why.text, /Corda 5: você apertou a casa 3, o pedido é a 2/);
+  // 4) corda que deveria ficar solta está apertada
+  nk = { m: press() }; e = mk(false, nk); nk.m = press([1, 2], [2, 2], [5, 3]); e.neckUpdate(0); e.advance(2);
+  assert.equal(e.results[0].grade, 'miss'); assert.match(e.results[0].why.text, /deveria ficar solta/);
+  // 5) palhetada obrigatória: montou e segurou, mas não palhetou -> erro; palhetando -> acerto
+  nk = { m: press() }; e = mk(true, nk); nk.m = press([1, 2], [2, 2]); e.neckUpdate(0); e.advance(0.5); assert.equal(e.results.length, 0, 'espera a palhetada');
+  e.advance(6); assert.equal(e.results[0].grade, 'miss'); assert.match(e.results[0].why.text, /faltou palhetar/);
+  nk = { m: press() }; e = mk(true, nk); nk.m = press([1, 2], [2, 2]); e.neckUpdate(0); e.advance(0.5); e.noteOn({ string: 0, note: 40, beat: 0.8 }); e.advance(0.9);
+  assert.equal(e.results.length, 1); assert.notEqual(e.results[0].grade, 'miss');
+  // 6) segurar: desmontar antes de 0,3 s reinicia a contagem
+  nk = { m: press() }; e = mk(false, nk); nk.m = press([1, 2], [2, 2]); e.neckUpdate(0); e.advance(0.05); nk.m = press([1, 2]); e.neckUpdate(0.1); e.advance(0.12);
+  nk.m = press([1, 2], [2, 2]); e.neckUpdate(0.15); e.advance(0.3); assert.equal(e.results.length, 0, 'recomeçou a segurar'); e.advance(0.5); assert.equal(e.results.length, 1); assert.notEqual(e.results[0].grade, 'miss');
+  // desmontou e só refez DEPOIS da janela de tempo: atrasado
+  nk = { m: press() }; e = mk(false, nk); nk.m = press([1, 2], [2, 2]); e.neckUpdate(0); e.advance(0.1); nk.m = press([1, 2]); e.neckUpdate(0.15); e.advance(0.4); assert.equal(e.results[0].grade, 'miss');
+  // 7) sem sensor (demo): resolve no tempo, avisando que não conferiu
+  e = new Evaluator(score(false), { passes: 1, neck: () => null }); e.advance(0.1); assert.equal(e.results[0].why.type, 'nosensor');
+});
+
+test('MONTAGEM com o score REAL do gerador: sem apertar nada o acorde NÃO conta como montado; montando certo conta', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  const { assembleDrill } = await import('../js/content/chord-drills.js');
+  const sc = normalizeScore(assembleDrill(['G', 'D'], { bpm: 60, beatsPerChord: 4, rounds: 1 }).score);
+  assert.deepEqual(sc.events[0].strum.frets, [3, 2, 0, 0, 0, -1]);
+  let nk = new Map(); const e = new Evaluator(sc, { passes: 1, neck: () => nk });
+  e.advance(-3.8); e.advance(0.1); assert.equal(e.results.length, 0, 'sem apertar nada: nada resolvido dentro da janela');
+  nk = new Map([[0, 3], [1, 2]]); e.neckUpdate(0.12); e.advance(0.5);
+  assert.equal(e.results.length, 1); assert.notEqual(e.results[0].grade, 'miss');
+  const e2 = new Evaluator(sc, { passes: 1, neck: () => new Map() }); e2.advance(3); assert.equal(e2.results[0].grade, 'miss', 'não montou a tempo: perdeu');
+});

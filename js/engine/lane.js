@@ -121,7 +121,7 @@ export class Lane {
       if (soon) { c.strokeStyle = C['--accent']; c.lineWidth = 2; c.stroke(); }
       c.save(); c.beginPath(); c.rect(bx, y0, bw, h); c.clip();
       c.fillStyle = cur ? '#1b1200' : soon ? C['--accent'] : C['--tx-2']; c.font = '800 17px ui-rounded,system-ui';
-      c.fillText((isChange && !cur ? (soon ? 'TROQUE → ' : '→ ') : '') + sg.id, bx + 10, y0 + h / 2 + 1);
+      c.fillText((isChange && !cur ? (soon ? (sc.assemble ? 'LEVANTE A MÃO → ' : 'TROQUE → ') : '→ ') : '') + sg.id, bx + 10, y0 + h / 2 + 1);
       c.restore();
       // linha de troca: atravessa toda a pista no instante exato em que o acorde muda
       if (isChange && x0 > 36 && x0 < W) {
@@ -158,7 +158,8 @@ export class Lane {
     }
     // seta da palhetada
     const dir = ev.kind === 'strum' ? ev.strum.dir : ev.pick;
-    if (dir) this.chevron(x, y0 + Math.min(34, (y1 - y0) * 0.36), dir, Math.min(w * 0.78, 30), guide ? C['--tx-2'] : '#fff6df', 2);
+    if (v.score?.assemble) { c.fillStyle = '#fff6df'; c.font = '800 11px ui-rounded,system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('MONTAR', x, y0 + 14); c.font = '700 10px ui-sans-serif'; c.fillText(`segure ${String(v.score.assemble.hold ?? 0.3).replace('.', ',')} s`, x, y0 + 28); }
+    else if (dir) this.chevron(x, y0 + Math.min(34, (y1 - y0) * 0.36), dir, Math.min(w * 0.78, 30), guide ? C['--tx-2'] : '#fff6df', 2);
     if (ev.tech && TECH_LABEL[ev.tech]) { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.fillText(TECH_LABEL[ev.tech], x, y1 + 8); }
     (ev.avoid || []).forEach((s) => { const y = rowY(s); c.strokeStyle = C['--avoid']; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 6, y - 6); c.lineTo(x + 6, y + 6); c.moveTo(x + 6, y - 6); c.lineTo(x - 6, y + 6); c.stroke(); });
     // resultado bem visível: ✓ verde e quantos ms você chegou antes (−) ou depois (+) do tempo exato; ✕ se perdeu

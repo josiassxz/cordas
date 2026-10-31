@@ -23,7 +23,7 @@ export default {
       mode: ['library', 'listen', 'drills'].includes(params.mode) ? params.mode : 'library',
       symbol: parseSymbol(params.symbol) ? symbolOf(...Object.values(parseSymbol(params.symbol))) : (sessionStorage.getItem('corda.chord') || 'Em'),
       vi: +params.v || 0, root: null, cat: null, q: '', diff: null, tag: null, favOnly: false,
-      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'].map(toItem), customName: '' },
+      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'].map(toItem), customName: '', hold: 0.3, asmStrum: false },
     };
     const parsed = parseSymbol(S.symbol) || { root: 4, quality: 'min' };
     S.root = parsed.root;
@@ -230,6 +230,7 @@ export default {
       try {
         if (S.drillKind === 'pair') return buildDrill('pair', { a: d.a, b: d.b, ...o });
         if (S.drillKind === 'progression') { const p = PROGRESSION_PRESETS[d.preset % PROGRESSION_PRESETS.length]; return buildDrill('progression', { symbols: p.symbols, title: `Progressão ${p.name}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) }); }
+        if (S.drillKind === 'assemble') return buildDrill('assemble', { symbols: d.custom, title: `Montagem${d.customName ? ': ' + d.customName : ''}: ${d.custom.map(itemLabel).join(' – ')}`, hold: d.hold, strum: d.asmStrum, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `${d.customName || 'Minha sequência'}: ${d.custom.map(itemLabel).join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         if (S.drillKind === 'positions') return buildDrill('positions', { symbol: d.symbol, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         return buildDrill('voicings', { symbol: d.symbol, ...o });
@@ -240,13 +241,16 @@ export default {
       const kind = DRILL_KINDS.find((k) => k.id === S.drillKind);
       const picker = S.drillKind === 'pair' ? `<div class="row wrap">${PAIR_PRESETS.map(([a, b]) => `<button class="chip ${d.a === a && d.b === b ? 'on' : ''}" data-pair="${a}|${b}">${a} ↔ ${b}</button>`).join('')}</div>
           <div class="row"><label class="field grow"><span>Acorde A</span><input id="dA" type="text" value="${esc(d.a)}"></label><label class="field grow"><span>Acorde B</span><input id="dB" type="text" value="${esc(d.b)}"></label></div>`
-        : S.drillKind === 'custom' ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(itemLabel(c))}</span>`).join('<span class="dim">→</span>')}</div>
+        : (S.drillKind === 'custom' || S.drillKind === 'assemble') ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(itemLabel(c))}</span>`).join('<span class="dim">→</span>')}</div>
             ${d.customName ? `<div class="dim">Sequência: <b>${esc(d.customName)}</b></div>` : ''}
             <button class="btn primary" data-act="pickseq">${icon('plus') || ''} Escolher / editar acordes…</button>
             <div class="ch-saved"><span class="dim">Minhas sequências:</span>${seqApi.list().length ? seqApi.list().map((x) => `<span class="cpk-savedchip"><button type="button" data-useseq="${esc(x.id)}" title="${esc(x.items.map(itemLabel).join(' – '))}">${esc(x.name)} <small class="dim">${x.items.length}</small></button><button type="button" data-delseq="${esc(x.id)}" aria-label="Excluir ${esc(x.name)}">✕</button></span>`).join('') : '<span class="dim">nenhuma salva — monte uma e dê um nome</span>'}</div><small class="dim">Qualquer acorde da biblioteca, com quantos você quiser.</small></div>`
         : S.drillKind === 'progression' ? `<div class="ch-cards" style="grid-template-columns:1fr">${PROGRESSION_PRESETS.map((p, i) => `<button class="ch-prog ${d.preset === i ? 'on' : ''}" data-preset="${i}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}<button class="ch-prog" data-act="pickseq"><b>＋ Montar a minha</b><small>Escolha os acordes numa lista visual</small></button></div>`
         : `<div class="row wrap">${POSITION_PRESETS.map((s) => `<button class="chip ${d.symbol === s ? 'on' : ''}" data-dsym="${s}">${s}</button>`).join('')}</div>
           <label class="field"><span>Outro acorde</span><input id="dS" type="text" value="${esc(d.symbol)}"></label>`;
+      const asmOpts = S.drillKind === 'assemble' ? `<div class="ch-asm"><div class="field"><span>Segurar o acorde montado</span><div class="seg">${[0.2, 0.3, 0.5, 0.8].map((h) => `<button class="${d.hold === h ? 'on' : ''}" data-hold="${h}">${String(h).replace('.', ',')} s</button>`).join('')}</div></div>
+        <label class="row"><input type="checkbox" id="asmStrum" ${d.asmStrum ? 'checked' : ''}><span>Exigir palhetada depois de montar <small class="dim">(opcional)</small></span></label>
+        <p class="muted" style="margin:4px 0 0;font-size:12.5px">Para cada acorde: <b>levante a mão</b> (solte todas as casas), monte o acorde e segure. Só acordes com casas apertadas são conferidos.</p></div>` : '';
       const seq = dr.error ? `<div class="empty">${esc(dr.error)}</div>` : `<div class="ch-seq">${dr.sequence.map((v, i) => `<div class="ch-step"><small>${i + 1}</small>${chordDiagram(v, { size: dr.sequence.length <= 4 ? 'md' : 'sm', showTitle: true })}</div>`).join('<span class="ch-arrow">→</span>')}<span class="ch-arrow">↻</span></div>`;
       body.innerHTML = `<div class="ch-split"><aside class="ch-left">
           <div class="ch-kinds" role="group" aria-label="Tipo de exercício">${DRILL_KINDS.map((k) => `<button class="${S.drillKind === k.id ? 'on' : ''}" data-kind="${k.id}" aria-pressed="${S.drillKind === k.id}"><b>${k.name}</b><small>${k.hint}</small></button>`).join('')}</div>
@@ -254,11 +258,12 @@ export default {
         <section class="ch-detail panel"><header class="ch-head"><div><div class="ch-name" style="font-size:26px">${esc(dr.score?.title || 'Exercício')}</div>
             <div class="muted">${dr.score ? `${dr.score.lengthBeats} batidas · nível ${dr.score.level} · ${d.mode === 'wait' ? 'acerte em qualquer momento do trecho' : 'no tempo'}` : ''}</div></div></header>
           ${seq}
+          ${asmOpts}
           <div class="ch-cfg">
             <label class="field"><span class="row between">Andamento <output class="num">${d.bpm} BPM</output></span><input type="range" id="dBpm" min="40" max="140" step="5" value="${d.bpm}"></label>
             <div class="field"><span>Batidas por acorde</span><div class="seg">${[2, 4, 8].map((n) => `<button class="${d.beatsPerChord === n ? 'on' : ''}" data-bpc="${n}">${n}</button>`).join('')}</div></div>
             <div class="field"><span>Repetições</span><div class="seg">${[2, 4, 8].map((n) => `<button class="${d.rounds === n ? 'on' : ''}" data-rounds="${n}">${n}×</button>`).join('')}</div></div>
-            <div class="field"><span>Modo</span><div class="seg"><button class="${d.mode === 'timed' ? 'on' : ''}" data-dmode="timed">No tempo</button><button class="${d.mode === 'wait' ? 'on' : ''}" data-dmode="wait">Sem exigir a batida</button></div></div>
+            ${S.drillKind === 'assemble' ? '' : `<div class="field"><span>Modo</span><div class="seg"><button class="${d.mode === 'timed' ? 'on' : ''}" data-dmode="timed">No tempo</button><button class="${d.mode === 'wait' ? 'on' : ''}" data-dmode="wait">Sem exigir a batida</button></div></div>`}
           </div>
           <div id="drillHost" class="ch-drillhost"></div>
           <div class="row"><button class="btn primary lg" data-act="startdrill" ${ready && !dr.error ? '' : 'disabled'}>${icon('play')} Iniciar exercício</button>
@@ -320,6 +325,7 @@ export default {
       else if (d.bpc) { S.drill.beatsPerChord = +d.bpc; renderDrills(); }
       else if (d.rounds) { S.drill.rounds = +d.rounds; renderDrills(); }
       else if (d.dmode) { S.drill.mode = d.dmode; renderDrills(); }
+      else if (d.hold) { S.drill.hold = +d.hold; renderDrills(); }
       else if (d.act === 'hear') { const v = current(); app.audio.strum(v.notes.map((n) => n + 0)); }
       else if (d.act === 'fav') { const f = favs(); store.set('favorites.chords', f.includes(S.symbol) ? f.filter((x) => x !== S.symbol) : [...f, S.symbol]); renderDetail(); }
       else if (d.act === 'practice') { S.mode = 'listen'; render(); }
@@ -336,6 +342,7 @@ export default {
     });
     el.addEventListener('change', (e) => {
       const set = (k, id) => { const p = parseSymbol(e.target.value); if (p) { S.drill[k] = symbolOf(p.root, p.quality, p.bass); renderDrills(); } else toast('Acorde não reconhecido: ' + e.target.value); };
+      if (e.target.id === 'asmStrum') { S.drill.asmStrum = e.target.checked; renderDrills(); return; }
       if (e.target.id === 'dA') set('a'); else if (e.target.id === 'dB') set('b'); else if (e.target.id === 'dS') set('symbol');
     });
 
