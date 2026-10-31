@@ -4,3 +4,5 @@
 .lab-str{display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-radius:var(--r);background:var(--raised)}
 .lab-str b{font-size:11px;color:var(--tx-3)}.lab-str span{font:700 18px var(--font-display)}.lab-str small{color:var(--tx-3);min-height:1.2em}
 .lab-caps{width:100%;border-collapse:collapse}.lab-caps td{padding:9px 8px;border-top:1px solid var(--hair);vertical-align:top}
+
+.mon{display:flex;align-items:center;gap:14px;margin:8px 0}.mon-bar{flex:1;height:14px;border-radius:99px;background:var(--raised-2);overflow:hidden}.mon-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .06s linear}.mon b{min-width:11ch;font:700 14px var(--font-display)}

@@ -1,6 +1,7 @@
 // Laboratório: o que a AG01 realmente envia. Monitor MIDI cru, calibração de afinação e captura exportável.
 import { esc, toast } from '../core/dom.js';
 import { STANDARD, STRING_LABELS, noteName, fretOf } from '../music/theory.js';
+import { Transport } from '../engine/transport.js';
 
 const CAPS = [
   ['Corda tocada (ataque)', 'sim', 'Nota ligada por corda (canal MIDI 1-6) com velocidade.'],
@@ -27,11 +28,24 @@ export default {
           <div class="row"><button class="btn" id="labMeasure">Medir última palhetada</button><button class="btn primary" id="labApply" disabled>Aplicar desvio</button></div>
           <p id="labResult" class="muted"></p></section>
       </div>
+      <section class="panel lab-mon"><h3 class="h3">Monitor de som (diagnóstico)</h3>
+        <p class="muted">Mostra o que o <b>app</b> está mandando para a saída de áudio agora. Se você ouvir um metrônomo e este nível estiver em <b>silêncio</b>, o som não vem deste app (outra aba do Corda, o app da Aeroband, a música da aba Músicas…).</p>
+        <div class="mon"><div class="mon-bar"><i id="monBar"></i></div><b id="monTxt">—</b></div>
+        <small class="dim mono" id="monInfo"></small></section>
       <section class="panel"><h3 class="h3">O que a AG01 informa (verificado em captura real)</h3>
         <table class="lab-caps"><tbody>${CAPS.map(([a, b, c]) => `<tr><td>${a}</td><td><span class="badge ${b === 'sim' ? 'live' : b === 'inferida' ? 'guide' : ''}">${b}</span></td><td class="muted">${c}</td></tr>`).join('')}</tbody></table></section>
     </div>`;
     const $log = el.querySelector('#labLog'), $map = el.querySelector('#labMap'), $res = el.querySelector('#labResult'), $apply = el.querySelector('#labApply');
     let suggestion = null, lastStrum = [];
+    // monitor de som: nível real na saída do app + quantos metrônomos estão vivos
+    const an = () => app.audio.analyser, buf = new Float32Array(1024);
+    const mon = setInterval(() => {
+      const a = an(), ctx = app.audio.context; let peak = 0;
+      if (a) { a.getFloatTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v)); }
+      const bar = el.querySelector('#monBar'), txt = el.querySelector('#monTxt'), info = el.querySelector('#monInfo'); if (!bar) return;
+      bar.style.width = `${Math.min(100, peak * 140)}%`; txt.textContent = peak > 0.01 ? 'SOM SAINDO' : 'silêncio'; txt.style.color = peak > 0.01 ? 'var(--accent)' : 'var(--tx-3)';
+      info.textContent = `áudio: ${ctx?.state || 'não iniciado'} · metrônomos vivos: ${Transport.liveCount} · exercício: ${app.practice?.current ? app.practice.current.state : 'nenhum'} · latência de saída: ${Math.round(((ctx?.outputLatency || 0) + (ctx?.baseLatency || 0)) * 1000)} ms`;
+    }, 100);
 
     const line = (t, txt) => { log.push({ t, txt }); if (log.length > 2000) log.shift(); const d = document.createElement('div'); d.textContent = `${(t / 1000).toFixed(3)}s  ${txt}`; $log.prepend(d); while ($log.childElementCount > 120) $log.lastChild.remove(); };
     const raw = (e) => line(e.detail.t, `RAW ${e.detail.hex}`);
@@ -61,6 +75,6 @@ export default {
       const blob = new Blob([JSON.stringify({ device: app.guitar.deviceName, when: new Date().toISOString(), events: log }, null, 1)], { type: 'application/json' });
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `captura-aeroband-${Date.now()}.json` }); a.click(); URL.revokeObjectURL(a.href);
     };
-    return () => { for (const [n, f] of [['raw', raw], ['noteon', on], ['noteoff', offE], ['cc', cc], ['strum', strum]]) app.guitar.removeEventListener(n, f); };
+    return () => { clearInterval(mon); for (const [n, f] of [['raw', raw], ['noteon', on], ['noteoff', offE], ['cc', cc], ['strum', strum]]) app.guitar.removeEventListener(n, f); };
   },
 };
