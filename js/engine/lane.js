@@ -81,7 +81,7 @@ export class Lane {
       if (x < 30 - ppb || x > W + 40) return;
       const res = v.results.get(`${p}:${i}`), past = nowX - x;
       c.globalAlpha = res ? Math.max(0.15, 1 - Math.max(0, past) / (ppb * 1.2)) : past > ppb * 0.35 ? Math.max(0.08, 1 - (past - ppb * 0.35) / (ppb * 0.7)) : 1;
-      this.drawEvent(ev, x, rowY, rowH, ppb, res);
+      this.drawEvent(ev, x, rowY, rowH, ppb, res, v);
       c.globalAlpha = 1;
     });
 
@@ -130,12 +130,14 @@ export class Lane {
     });
   }
 
-  drawEvent(ev, x, rowY, rowH, ppb, res) {
+  drawEvent(ev, x, rowY, rowH, ppb, res, v = {}) {
     const c = this.ctx, C = this.colors, guide = !ev.check.strings && ev.kind !== 'rest';
     const strings = ev.kind === 'strum' ? ev.strum.strings : (ev.notes || []).map((n) => n.string);
     if (!strings.length) return;
     const lo = Math.min(...strings), hi = Math.max(...strings);
-    const w = Math.max(44, Math.min(ppb * Math.min(ev.dur || 0.5, 1) * 0.86, 84));
+    // LARGURA = JANELA DE ACERTO: tocar dentro do bloco (antes ou depois do centro) conta como acerto. O centro é o instante exato.
+    const px = (ms) => ms / 1000 * (v.bpmEff || 60) / 60 * ppb;
+    const w = v.okMs ? Math.max(26, 2 * px(v.okMs)) : Math.max(44, Math.min(ppb * Math.min(ev.dur || 0.5, 1) * 0.86, 84));
     const y0 = Math.max(74, rowY(hi) - rowH * 0.46 - 28), y1 = rowY(lo) + rowH * 0.46, bx = x - w / 2;
     const okAll = res && res.grade !== 'miss';
     const base = res ? (res.grade === 'miss' ? ['#7a2f3a', '#a4414f'] : res.grade === 'ok' ? ['#c98a14', '#f1b43c'] : ['#2f9e6e', '#43d493']) : ['#c28a1c', '#f3c35a'];
@@ -145,6 +147,14 @@ export class Lane {
     else { c.fillStyle = g; c.shadowColor = 'rgba(243,195,90,.35)'; c.shadowBlur = res ? 0 : 10; c.fill(); c.shadowBlur = 0; }
     // brilho no topo do bloco (como no app de referência)
     if (!guide) { const h = c.createLinearGradient(0, y0, 0, y0 + (y1 - y0) * 0.5); h.addColorStop(0, 'rgba(255,255,255,.28)'); h.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = h; c.beginPath(); c.roundRect(bx, y0, w, (y1 - y0) * 0.5, 7); c.fill(); }
+    // faixas dentro do bloco: "bom" (mais claro) e "perfeito" (ainda mais) em volta da linha central do tempo exato
+    if (v.okMs && !guide) {
+      c.save(); c.beginPath(); c.roundRect(bx, y0, w, y1 - y0, 7); c.clip();
+      c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x - px(v.goodMs), y0, 2 * px(v.goodMs), y1 - y0);
+      c.fillStyle = 'rgba(255,255,255,.16)'; c.fillRect(x - px(v.perfectMs), y0, 2 * px(v.perfectMs), y1 - y0);
+      c.fillStyle = 'rgba(255,255,255,.6)'; c.fillRect(x - 0.75, y0, 1.5, y1 - y0);
+      c.restore();
+    }
     // seta da palhetada
     const dir = ev.kind === 'strum' ? ev.strum.dir : ev.pick;
     if (dir) this.chevron(x, y0 + Math.min(34, (y1 - y0) * 0.36), dir, Math.min(w * 0.78, 30), guide ? C['--tx-2'] : '#fff6df', 2);

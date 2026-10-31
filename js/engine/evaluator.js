@@ -6,9 +6,11 @@ import { expectedStrings, expectedPitch, isScored } from './score.js';
 export const GRADE_WEIGHT = { perfect: 1, good: 0.75, ok: 0.45, miss: 0 };
 
 // Janelas de acerto em ms, proporcionais ao andamento efetivo: em tempos rápidos ficam mais estreitas.
-export function windowsMs(bpmEff, subdivision = 2) {
+export const TOLERANCE = { strict: 0.6, normal: 1, wide: 1.6 };
+export function windowsMs(bpmEff, subdivision = 2, scale = 1) {
   const slot = 60000 / bpmEff / subdivision;
-  return { perfect: Math.min(55, slot * 0.15), good: Math.min(110, slot * 0.3), ok: Math.min(200, slot * 0.45) };
+  // `ok` é a janela inteira de acerto (antes e depois da batida): é a METADE da largura do bloco na pista. Nunca passa de meia fatia.
+  return { perfect: Math.min(55 * scale, slot * 0.15 * scale), good: Math.min(110 * scale, slot * 0.3 * scale), ok: Math.min(200 * scale, slot * 0.45 * scale, slot * 0.5) };
 }
 const SPREAD = { min: 150, max: 450 }; // cordas de uma palhetada chegam espalhadas no tempo
 const gradeOf = (aMs, w) => (aMs <= w.perfect ? 'perfect' : aMs <= w.good ? 'good' : 'ok');
@@ -25,6 +27,7 @@ export class Evaluator {
     // `validate` ('strings'|'chord'|'neck'|'timing') é o atalho antigo.
     const old = { strings: [false, 'strings'], chord: [false, 'chord'], neck: [true, 'off'], timing: [false, 'off'] }[o.validate || (o.checkStrings === false ? 'timing' : 'strings')];
     this.neckOn = o.neckOn ?? old[0]; this.sound = o.sound ?? old[1]; this.free = this.sound !== 'strings';
+    this.tol = TOLERANCE[o.tolerance] ?? 1;
     this.neck = o.neck || null;   // () => Map(corda -> casa apertada) | null (sem sensor)
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -32,7 +35,7 @@ export class Evaluator {
   }
 
   setTempo(bpmEff) { this.bpm = bpmEff; }
-  get win() { return windowsMs(this.bpm, this.sub); }
+  get win() { return windowsMs(this.bpm, this.sub, this.tol); }
   toBeats(ms) { return ms * this.bpm / 60000; }
   // Eventos com várias cordas (palhetada ou notas simultâneas) chegam espalhados no tempo.
   spreadB(ev) { return ev.kind === 'strum' || expectedStrings(ev).length > 1 ? this.toBeats(Math.min(SPREAD.max, Math.max(SPREAD.min, (60000 / this.bpm / this.sub) * 0.9))) : 0; }

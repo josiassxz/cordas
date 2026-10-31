@@ -15,7 +15,7 @@ export class Transport extends EventTarget {
     this.subdivision = o.subdivision ?? 2; // ticks por batida (2 = colcheias)
     this.click = o.click ?? true;
     this.latencyMs = o.latencyMs ?? 0;     // atraso do BLE a compensar na avaliação
-    this.lookahead = 0.12;
+    this.lookahead = 0.2;   // folga maior: aguenta o navegador ocupado (canvas, GC) sem falhar/atrasar cliques
     this.clock = o.clock || (() => this.audio.context.currentTime);
     this.silent = !!o.silent;              // testes: sem áudio
     this.state = 'stopped';
@@ -123,14 +123,16 @@ export class Transport extends EventTarget {
     for (const k of ['out', 'guideOut']) { const g = this[k]; if (!g) continue; try { g.gain.cancelScheduledValues(0); g.gain.value = 0; g.disconnect(); } catch { /* já solto */ } this[k] = null; }
   }
   setVolume(v) { this.volume = Math.max(0, Math.min(1.5, v)); if (this.out) this.out.gain.value = this.volume; }
+  // Clique: o tempo FORTE (1º do compasso) é bem mais alto, mais agudo e mais longo; os demais são curtos e suaves; subdivisão é bem baixinha.
   blip(time, accent, soft = false) {
     const ctx = this.audio.context, o = ctx.createOscillator(), g = ctx.createGain();
-    o.frequency.value = accent ? 1760 : 1175;
-    const peak = soft ? 0.14 : accent ? 0.5 : 0.3;
+    const peak = soft ? 0.12 : accent ? 0.9 : 0.3, len = accent ? 0.09 : soft ? 0.03 : 0.045;
+    o.type = accent ? 'triangle' : 'sine';
+    o.frequency.value = accent ? 1568 : soft ? 988 : 1047;
     g.gain.setValueAtTime(0.0001, time);
     g.gain.exponentialRampToValueAtTime(peak, time + 0.002);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + len);
     o.connect(g).connect(this.out);
-    o.start(time); o.stop(time + 0.06);
+    o.start(time); o.stop(time + len + 0.02);
   }
 }

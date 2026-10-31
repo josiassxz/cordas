@@ -247,3 +247,11 @@ test('som pelo ACORDE: variações contam como o acorde pedido; terça errada co
   const strict = new Evaluator(c, { passes: 1, neckOn: false, sound: 'strings' }); [40, 52, 55, 60, 64].forEach((n, i) => strict.noteOn({ string: i, note: n, beat: 0.01 + i * 0.03 }));
   assert.ok(strict.extras >= 1, 'corda a corda: a corda a mais (Mi grave) é cobrada');
 });
+
+test('janela de acerto: ±ms por andamento e tolerância; nunca passa de meia fatia', async () => {
+  const { windowsMs, TOLERANCE } = await import('../js/engine/evaluator.js');
+  const n = windowsMs(80, 2), s = windowsMs(80, 2, TOLERANCE.strict), w = windowsMs(80, 2, TOLERANCE.wide);
+  assert.equal(Math.round(n.ok), 169); assert.ok(s.ok < n.ok && n.ok < w.ok);
+  assert.ok(windowsMs(60, 1, 1.6).ok <= 60000 / 60 / 1 * 0.5, 'a janela ampla não invade a fatia vizinha');
+  assert.ok(windowsMs(160, 4).ok < windowsMs(80, 4).ok, 'mais rápido, janela mais estreita');
+});

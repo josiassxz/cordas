@@ -83,6 +83,9 @@
       <select id="rigor"><option value="root">Leve — basta a nota raiz</option><option value="normal">Normal — raiz e terça certas</option><option value="strict">Estrito — só as notas do acorde</option></select></label>
     <label class="field"><span>Notação</span>
       <select id="flats"><option value="0">Sustenidos (C#, F#)</option><option value="1">Bemóis (Db, Gb)</option></select></label>
+    <label class="field"><span>Tolerância de tempo (largura do bloco na pista)</span>
+      <select id="tolerance"><option value="strict">Rigorosa — bloco mais estreito</option><option value="normal">Normal</option><option value="wide">Ampla — bloco mais largo</option></select>
+      <small>Tocar dentro do bloco conta como acerto (antes ou depois do centro). Quanto mais rápido o andamento, mais estreito o bloco.</small></label>
     <div class="field"><span>Validação dos exercícios <small class="dim">(o tempo da batida sempre conta)</small></span>
       <label class="row"><input type="checkbox" id="vNeck"><span><b>Montagem no braço</b> — conferir se as casas apertadas são as do acorde pedido (usa os sensores de casa; ignora as cordas soltas que soarem a mais)</span></label>
       <label class="field" style="margin-top:6px"><span>Som que chega</span><select id="vSound"><option value="off">Não conferir o som (iniciante: pode tocar todas as cordas)</option><option value="chord">Pelo acorde — as notas tocadas formam o acorde pedido</option><option value="strings">Corda a corda — só as cordas pedidas, nas notas certas</option></select></label>

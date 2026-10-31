@@ -2,7 +2,7 @@
 // Não toca DOM (a interface está em practice.js/highway.js). Estados: idle -> countin -> running <-> paused -> finished.
 // Pausa congela o relógio (Transport), o guia sonoro e a avaliação (notas durante a pausa são ignoradas).
 import { Transport } from './transport.js';
-import { Evaluator, evalAttempt, GRADE_WEIGHT } from './evaluator.js';
+import { Evaluator, evalAttempt, GRADE_WEIGHT, TOLERANCE } from './evaluator.js';
 import { normalizeScore, isScored, expectedStrings, expectedPitch, expectedFret, relayoutScore } from './score.js';
 import { matchChord, detectChord, noteAt } from '../music/theory.js';
 
@@ -48,7 +48,7 @@ export class Runner {
   start() {
     this.reset();
     const st = this.deps.settings();
-    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, neckOn: validationOf(st).neck, sound: validationOf(st).sound, neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
+    this.evaluator = new Evaluator(this.score, { pitchOffset: st.pitchOffset ?? 0, rigor: st.rigor ?? 'normal', passes: this.passes, bpm: this.bpm * this.speed, strings: this.score.tuning, tolerance: st.timingTolerance || 'normal', neckOn: validationOf(st).neck, sound: validationOf(st).sound, neck: () => (this.deps.guitar?.status === 'connected' ? this.deps.guitar.pressed : null) });
     this.attach(true);
     if (this.mode === 'wait') {
       this.waitList = this.score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
@@ -103,6 +103,7 @@ export class Runner {
   setBpm(v) { this.bpm = clamp(Math.round(v), 20, 300); this.transport?.setBpm(this.bpm); this.evaluator?.setTempo(this.effectiveBpm); this.emit('tempo', { bpm: this.bpm, speed: this.speed }); }
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
+  setTolerance(t) { if (this.evaluator) this.evaluator.tol = TOLERANCE[t] ?? 1; this.deps.setTolerance?.(t); }
   setValidation({ neck, sound }) { const e = this.evaluator; if (e) { if (neck != null) e.neckOn = neck; if (sound != null) { e.sound = sound; e.free = sound !== 'strings'; } } this.deps.setValidation?.({ neck, sound }); }
   // Compasso (tempos por compasso) e batidas por tempo: o exercício é REFEITO na nova grade e recomeça (tablaturas só mudam a grade).
   setMeter({ beats, sub } = {}) {

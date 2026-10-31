@@ -17,7 +17,7 @@ export function installPractice(app) {
 
 function startPractice(app, score, opts = {}) {
   app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
-  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setValidation: ({ neck, sound }) => { if (neck != null) app.store.set('settings.validateNeck', neck); if (sound != null) app.store.set('settings.validateSound', sound); } };
+  const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings'), setTolerance: (t) => app.store.set('settings.timingTolerance', t), setValidation: ({ neck, sound }) => { if (neck != null) app.store.set('settings.validateNeck', neck); if (sound != null) app.store.set('settings.validateSound', sound); } };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;
@@ -59,7 +59,8 @@ function mountUI(app, run, opts) {
   const strums = sc.events.filter((e) => e.kind === 'strum').length, notesN = sc.events.filter((e) => e.kind === 'note').length;
   const vertical = strums > 0 && strums >= notesN;
   host.querySelector('.pr-hw').classList.toggle('lane', vertical);
-  const hw = new (vertical ? Lane : Highway)(cv, () => ({ score: run.score, pos: run.position(), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
+  const outLat = () => { const c = app.audio.context; return ((c?.outputLatency || 0) + (c?.baseLatency || 0)) * run.effectiveBpm / 60; };   // o que você VÊ acompanha o que você OUVE
+  const hw = new (vertical ? Lane : Highway)(cv, () => ({ okMs: run.evaluator?.win.ok ?? 0, goodMs: run.evaluator?.win.good ?? 0, perfectMs: run.evaluator?.win.perfect ?? 0, bpmEff: run.effectiveBpm, score: run.score, pos: run.position() - (run.state === 'running' || run.state === 'countin' ? outLat() : 0), results: run.results, passes: run.passes, state: run.state, mode: run.mode }));
   hw.start();
   const tr = mountTransport($('.pr-bar'), run);
   const counts = { perfect: 0, good: 0, ok: 0, miss: 0, extra: 0 };
