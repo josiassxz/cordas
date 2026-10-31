@@ -23,7 +23,7 @@ export default {
       mode: ['library', 'listen', 'drills'].includes(params.mode) ? params.mode : 'library',
       symbol: parseSymbol(params.symbol) ? symbolOf(...Object.values(parseSymbol(params.symbol))) : (sessionStorage.getItem('corda.chord') || 'Em'),
       vi: +params.v || 0, root: null, cat: null, q: '', diff: null, tag: null, favOnly: false,
-      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'].map(toItem) },
+      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'].map(toItem), customName: '' },
     };
     const parsed = parseSymbol(S.symbol) || { root: 4, quality: 'min' };
     S.root = parsed.root;
@@ -223,7 +223,7 @@ export default {
       try {
         if (S.drillKind === 'pair') return buildDrill('pair', { a: d.a, b: d.b, ...o });
         if (S.drillKind === 'progression') { const p = PROGRESSION_PRESETS[d.preset % PROGRESSION_PRESETS.length]; return buildDrill('progression', { symbols: p.symbols, title: `Progressão ${p.name}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) }); }
-        if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `Minha sequência: ${d.custom.map(itemLabel).join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
+        if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `${d.customName || 'Minha sequência'}: ${d.custom.map(itemLabel).join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         if (S.drillKind === 'positions') return buildDrill('positions', { symbol: d.symbol, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         return buildDrill('voicings', { symbol: d.symbol, ...o });
       } catch (e) { return { error: e.message }; }
@@ -234,7 +234,9 @@ export default {
       const picker = S.drillKind === 'pair' ? `<div class="row wrap">${PAIR_PRESETS.map(([a, b]) => `<button class="chip ${d.a === a && d.b === b ? 'on' : ''}" data-pair="${a}|${b}">${a} ↔ ${b}</button>`).join('')}</div>
           <div class="row"><label class="field grow"><span>Acorde A</span><input id="dA" type="text" value="${esc(d.a)}"></label><label class="field grow"><span>Acorde B</span><input id="dB" type="text" value="${esc(d.b)}"></label></div>`
         : S.drillKind === 'custom' ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(itemLabel(c))}</span>`).join('<span class="dim">→</span>')}</div>
-            <button class="btn primary" data-act="pickseq">${icon('plus') || ''} Escolher / editar acordes…</button><small class="dim">Qualquer acorde da biblioteca, com quantos você quiser.</small></div>`
+            ${d.customName ? `<div class="dim">Sequência: <b>${esc(d.customName)}</b></div>` : ''}
+            <button class="btn primary" data-act="pickseq">${icon('plus') || ''} Escolher / editar acordes…</button>
+            <div class="ch-saved"><span class="dim">Minhas sequências:</span>${seqApi.list().length ? seqApi.list().map((x) => `<span class="cpk-savedchip"><button type="button" data-useseq="${esc(x.id)}" title="${esc(x.items.map(itemLabel).join(' – '))}">${esc(x.name)} <small class="dim">${x.items.length}</small></button><button type="button" data-delseq="${esc(x.id)}" aria-label="Excluir ${esc(x.name)}">✕</button></span>`).join('') : '<span class="dim">nenhuma salva — monte uma e dê um nome</span>'}</div><small class="dim">Qualquer acorde da biblioteca, com quantos você quiser.</small></div>`
         : S.drillKind === 'progression' ? `<div class="ch-cards" style="grid-template-columns:1fr">${PROGRESSION_PRESETS.map((p, i) => `<button class="ch-prog ${d.preset === i ? 'on' : ''}" data-preset="${i}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}<button class="ch-prog" data-act="pickseq"><b>＋ Montar a minha</b><small>Escolha os acordes numa lista visual</small></button></div>`
         : `<div class="row wrap">${POSITION_PRESETS.map((s) => `<button class="chip ${d.symbol === s ? 'on' : ''}" data-dsym="${s}">${s}</button>`).join('')}</div>
           <label class="field"><span>Outro acorde</span><input id="dS" type="text" value="${esc(d.symbol)}"></label>`;
@@ -258,10 +260,16 @@ export default {
       paintIcons(body);
       clearStage();
     }
+    const SEQ_KEY = 'chords.sequences';
+    const seqApi = {
+      list: () => store.get(SEQ_KEY, []),
+      save: (name, items) => store.update(SEQ_KEY, (a) => { const l = a.filter((x) => x.name.toLowerCase() !== name.toLowerCase()); return [{ id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, items, saved: Date.now() }, ...l]; }, []),
+      remove: (id) => store.update(SEQ_KEY, (a) => a.filter((x) => x.id !== id), []),
+    };
     async function pickSeq() {
-      const seq = await pickChords({ title: 'Monte sua sequência de acordes', initial: S.drill.custom, min: 2, max: 16, presets: PROGRESSION_PRESETS.map((p) => ({ name: p.name, symbols: p.symbols })) });
-      if (!seq) return;
-      S.drill.custom = seq; S.drillKind = 'custom'; renderDrills();
+      const seq = await pickChords({ title: 'Monte sua sequência de acordes', initial: S.drill.custom, name: S.drill.customName, min: 2, max: 16, saved: seqApi, presets: PROGRESSION_PRESETS.map((p) => ({ name: p.name, symbols: p.symbols })) });
+      if (!seq) { renderDrills(); return; }
+      S.drill.custom = [...seq]; S.drill.customName = seq.name || ''; S.drillKind = 'custom'; renderDrills();
     }
     function startDrill() {
       const dr = currentDrill(); if (dr.error || !app.practice?.ready) return;
@@ -311,6 +319,8 @@ export default {
       else if (d.act === 'pause') { tick(); S.paused = !S.paused; session.last = performance.now(); if (S.paused) clearTimeout(timer); renderListen(); }
       else if (d.act === 'startdrill') startDrill();
       else if (d.act === 'pickseq') pickSeq();
+      else if (d.useseq) { const x = seqApi.list().find((y) => y.id === d.useseq); if (x) { S.drill.custom = x.items.map(toItem); S.drill.customName = x.name; S.drillKind = 'custom'; renderDrills(); } }
+      else if (d.delseq) { seqApi.remove(d.delseq); renderDrills(); }
     });
     el.addEventListener('input', (e) => {
       if (e.target.id === 'chQ') { S.q = e.target.value; const pos = e.target.selectionStart; renderLibrary(); const i = $('#chQ', el); i.focus(); i.setSelectionRange(pos, pos); }

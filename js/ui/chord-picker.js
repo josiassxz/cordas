@@ -24,7 +24,7 @@ function slashSymbols() {
   return (slashCache = out);
 }
 
-export function pickChords({ title = 'Monte sua sequência de acordes', initial = [], min = 2, max = 16, presets = [] } = {}) {
+export function pickChords({ title = 'Monte sua sequência de acordes', initial = [], min = 2, max = 16, presets = [], saved = null, name: initialName = '' } = {}) {
   return new Promise((resolve) => {
     document.getElementById('chPicker')?.remove();
     const seq = initial.map(toItem);
@@ -43,7 +43,8 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       <div class="cpk-var" id="cpkVar" hidden></div>
       <div class="cpk-tray"><div class="cpk-trayhead"><b>Sua sequência <span class="num dim" id="cpkN"></span></b>
         <span class="row">${presets.length ? `<select id="cpkPre" aria-label="Começar de um modelo"><option value="">Começar de um modelo…</option>${presets.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join('')}</select>` : ''}<button type="button" class="btn ghost sm" data-clear>Limpar</button></span></div>
-        <div class="cpk-seq" id="cpkSeq" aria-live="polite"></div></div>
+        <div class="cpk-seq" id="cpkSeq" aria-live="polite"></div>
+        ${saved ? `<div class="cpk-save"><input type="text" id="cpkName" maxlength="40" placeholder="Nome da sequência (ex.: Pop em G)" aria-label="Nome da sequência" value="${esc(initialName)}"><button type="button" class="btn" id="cpkSave" data-save>Salvar com nome</button></div><div class="cpk-saved" id="cpkSaved" aria-label="Sequências salvas"></div>` : ''}</div>
       <footer class="cpk-foot"><button type="button" class="btn" data-x>Cancelar</button><button type="button" class="btn primary" id="cpkOk">Usar esta sequência</button></footer>
     </form>`;
     document.body.appendChild(dlg);
@@ -95,6 +96,11 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       $('#cpkSeq').innerHTML = seq.length ? seq.map((it, i) => `<div class="cpk-step ${F.open && F.sel === i ? 'sel' : ''}" draggable="true" data-idx="${i}" title="Clique para ver as variações · arraste para mudar a ordem"><small class="num">${i + 1}</small><b>${esc(itemLabel(it))}</b>${it.vid ? `<small class="dim">${esc(voicingLabel(voicingsOf(it.symbol).find((v) => v.id === it.vid) || { tags: [], baseFret: 1 }))}</small>` : ''}<span class="cpk-acts"><button type="button" data-mv="${i}:-1" aria-label="Mover ${esc(it.symbol)} para trás" ${i === 0 ? 'disabled' : ''}>‹</button><button type="button" data-mv="${i}:1" aria-label="Mover ${esc(it.symbol)} para frente" ${i === seq.length - 1 ? 'disabled' : ''}>›</button><button type="button" data-rm="${i}" aria-label="Remover ${esc(it.symbol)}">✕</button></span></div>`).join('<span class="cpk-arrow">→</span>') : '<span class="dim">Nenhum acorde ainda. Escolha acima ou arraste para cá.</span>';
       const ok = $('#cpkOk'); ok.disabled = seq.length < min; ok.textContent = seq.length < min ? `Escolha pelo menos ${min} acordes` : `Usar esta sequência (${seq.length})`;
     }
+    function paintSaved() {
+      const box = $('#cpkSaved'); if (!box) return;
+      const l = saved.list();
+      box.innerHTML = l.length ? `<span class="dim">Salvas:</span>` + l.map((x) => `<span class="cpk-savedchip"><button type="button" data-load="${esc(x.id)}" title="${esc(x.items.map(itemLabel).join(' – '))}">${esc(x.name)} <small class="dim">${x.items.length}</small></button><button type="button" data-del="${esc(x.id)}" aria-label="Excluir ${esc(x.name)}">✕</button></span>`).join('') : '<span class="dim">Nenhuma salva ainda. Monte uma sequência, dê um nome e salve.</span>';
+    }
     const add = (it, at = seq.length) => { if (seq.length >= max) return; seq.splice(at, 0, it); paintSeq(); $('#cpkSeq').querySelector(`[data-idx="${at}"]`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); };
     const done = (v) => { dlg.close(); dlg.remove(); resolve(v); };
 
@@ -103,7 +109,16 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       if (step && !e.target.closest('button')) { const i = +step.dataset.idx; F.open = seq[i].symbol; F.sel = i; paintVar(); paintSeq(); $('#cpkTabs').scrollIntoView?.({ block: 'nearest' }); return; }
       const b = e.target.closest('button'); if (!b) return;
       const d = b.dataset;
-      if (d.add) add({ symbol: d.add, vid: null });
+      if ('save' in d) {
+        const nm = $('#cpkName').value.trim();
+        if (!nm) { $('#cpkName').focus(); $('#cpkName').classList.add('bad'); return; }
+        if (seq.length < min) return;
+        saved.save(nm, seq.map((x) => ({ ...x }))); $('#cpkName').classList.remove('bad'); paintSaved();
+        b.textContent = 'Salva ✓'; setTimeout(() => { b.textContent = 'Salvar com nome'; }, 1400);
+      }
+      else if (d.load) { const x = saved.list().find((y) => y.id === d.load); if (x) { seq.length = 0; seq.push(...x.items.map(toItem)); $('#cpkName').value = x.name; F.open = null; F.sel = null; paintVar(); paintSeq(); } }
+      else if (d.del) { saved.remove(d.del); paintSaved(); }
+      else if (d.add) add({ symbol: d.add, vid: null });
       else if (d.addv) { const [symbol, vid] = d.addv.split('|'); if (F.sel != null && seq[F.sel]) { seq[F.sel] = { symbol, vid }; paintSeq(); paintVar(); } else add({ symbol, vid }); }
       else if (d.rel) {
         if (F.sel != null && seq[F.sel]) { seq[F.sel] = { symbol: d.rel, vid: null }; F.open = d.rel; paintSeq(); paintVar(); }
@@ -118,7 +133,7 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
       else if ('root' in d) { F.root = d.root === '' ? null : +d.root; F.shown = PAGE; dlg.querySelectorAll('[data-root]').forEach((x) => x.classList.toggle('on', x === b)); paintGrid(); }
       else if ('cat' in d) { F.cat = d.cat || null; F.shown = PAGE; dlg.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); paintGrid(); }
       else if ('x' in d) done(null);
-      else if (b.id === 'cpkOk' && seq.length >= min) done(seq.map((x) => ({ ...x })));
+      else if (b.id === 'cpkOk' && seq.length >= min) { const out = seq.map((x) => ({ ...x })); out.name = $('#cpkName')?.value.trim() || ''; done(out); }
     });
 
     // ---- arrastar e soltar: reordenar a sequência, ou soltar um acorde da grade nela ----
@@ -156,7 +171,7 @@ export function pickChords({ title = 'Monte sua sequência de acordes', initial 
     $('#cpkQ').addEventListener('input', (e) => { F.q = e.target.value; F.shown = PAGE; paintGrid(); });
     $('#cpkPre')?.addEventListener('change', (e) => { const p = presets[+e.target.value]; if (p) { seq.length = 0; seq.push(...p.symbols.slice(0, max).map(toItem)); paintSeq(); } e.target.value = ''; });
     dlg.addEventListener('cancel', (e) => { e.preventDefault(); done(null); });
-    paintGrid(); paintVar(); paintSeq();
+    paintGrid(); paintVar(); paintSeq(); paintSaved();
     dlg.showModal();
     $('#cpkQ').focus();
   });

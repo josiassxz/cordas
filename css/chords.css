@@ -117,3 +117,9 @@
 
 .cpk-varhead.rel{margin-top:14px}
 .cpk-var{max-height:52vh;overflow:auto}
+
+.cpk-save{display:flex;gap:8px;margin-top:10px}.cpk-save input{flex:1}.cpk-save input.bad{border-color:var(--bad)}
+.cpk-saved{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;font-size:13px}
+.cpk-savedchip{display:inline-flex;align-items:center;border:1px solid var(--hair-2);border-radius:99px;background:var(--raised);overflow:hidden}
+.cpk-savedchip button{padding:5px 10px;cursor:pointer}.cpk-savedchip button:hover{background:var(--raised-2)}.cpk-savedchip button:last-child{padding:5px 9px;color:var(--tx-3)}.cpk-savedchip button:last-child:hover{color:var(--bad)}
+.ch-saved{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
