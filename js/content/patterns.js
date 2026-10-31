@@ -50,6 +50,17 @@ export function shapeOf(symbol) {
   return s;
 }
 export const hasShape = (symbol) => cache.has(symbol);
+// Garante a forma de qualquer acorde da biblioteca (digitação mais fácil), para progressões montadas pelo usuário.
+export async function ensureShapes(symbols) {
+  const m = await import('../music/chords.js');
+  for (const sym of symbols) {
+    if (cache.has(sym)) continue;
+    const l = m.voicingsOf(sym); if (!l.length) throw new Error(`Acorde sem digitação: ${sym}`);
+    const v = l.find((x) => x.tags.includes('iniciante') && !x.barre) || l.slice().sort((a, b) => a.difficulty - b.difficulty)[0];
+    const p = m.parseSymbol(sym);
+    cache.set(sym, mk(sym, p.root, p.quality, v.frets, v.fingers));
+  }
+}
 export const allShapes = () => [...cache.values()];
 
 // Troca as formas pelas da biblioteca nova (frente ACORDES) se ela existir e responder ao contrato.

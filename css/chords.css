@@ -72,3 +72,23 @@
 .ch-kinds button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--hair);text-align:left;transition:.15s}
 .ch-kinds button small{color:var(--tx-3)}.ch-kinds button:hover{background:var(--raised)}.ch-kinds button.on{border-color:var(--accent);background:var(--accent-soft)}
 .chords .btn.lg{white-space:nowrap}
+
+/* seletor de acordes (modal) */
+#chPicker{width:min(980px,96vw);max-height:92vh}
+.cpk{display:flex;flex-direction:column;gap:14px;padding:22px;max-height:92vh}
+.cpk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.cpk-head p{margin:4px 0 0;font-size:13px}
+.cpk-filters{display:flex;flex-direction:column;gap:10px}
+.cpk-chips{display:flex;gap:6px;flex-wrap:wrap}
+.cpk-chips .chip{cursor:pointer;border:1px solid var(--hair-2);background:var(--raised)}.cpk-chips .chip.on{background:var(--accent);color:#1b1200;border-color:var(--accent)}
+.cpk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;overflow:auto;min-height:150px;max-height:36vh;padding:2px}
+.cpk-tile{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 6px;border-radius:12px;border:1px solid var(--hair);background:var(--raised);cursor:pointer;transition:transform var(--dur),border-color var(--dur),background var(--dur)}
+.cpk-tile:hover{border-color:var(--accent);background:var(--raised-2);transform:translateY(-2px)}.cpk-tile:active{transform:scale(.97)}
+.cpk-tile b{font:700 14px var(--font-display)}.cpk-tile svg{max-width:64px;height:auto}
+.cpk-tray{border:1px solid var(--hair);border-radius:var(--r-lg);padding:12px 14px;background:var(--bg,#0b0d12)}
+.cpk-trayhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.cpk-seq{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:4px 2px;min-height:62px}
+.cpk-step{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:68px;padding:6px 8px;border-radius:12px;background:var(--raised-2);border:1px solid var(--hair-2)}
+.cpk-step b{font:800 17px var(--font-display)}.cpk-step small{color:var(--tx-3);font-size:10px}
+.cpk-acts{display:flex;gap:2px}.cpk-acts button{width:22px;height:20px;border-radius:6px;color:var(--tx-2);font-size:13px;line-height:1}.cpk-acts button:hover:not(:disabled){background:var(--raised);color:var(--tx)}.cpk-acts button:disabled{opacity:.25}
+.cpk-arrow{color:var(--tx-3)}
+.cpk-foot{display:flex;justify-content:flex-end;gap:10px}

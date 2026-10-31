@@ -74,13 +74,14 @@ export function voicingChangeDrill(symbol, o = {}) {
 export const DRILL_KINDS = [
   { id: 'pair', name: 'Troca de dois acordes', hint: 'Alterne A ↔ B até a troca ficar limpa' },
   { id: 'progression', name: 'Progressão', hint: 'Sequências reais de música' },
+  { id: 'custom', name: 'Minha sequência', hint: 'Escolha os acordes que quiser, na ordem que quiser' },
   { id: 'positions', name: 'Posições do mesmo acorde', hint: 'Suba o braço mantendo o acorde' },
   { id: 'voicings', name: 'Entre digitações', hint: 'Aberta ↔ pestana do mesmo acorde' },
 ];
 
 export function buildDrill(kind, params = {}) {
   if (kind === 'pair') return changeDrill(params.a, params.b, params);
-  if (kind === 'progression') return progressionDrill(params.symbols, params);
+  if (kind === 'progression' || kind === 'custom') return progressionDrill(params.symbols, params);
   if (kind === 'positions') return positionDrill(params.symbol, params);
   if (kind === 'voicings') return voicingChangeDrill(params.symbol, params);
   throw new Error(`Tipo de exercício desconhecido: ${kind}`);

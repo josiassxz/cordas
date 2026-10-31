@@ -15,7 +15,7 @@ export function startShell(app, views) {
   const parse = () => { const [id, q] = location.hash.replace(/^#\/?/, '').split('?'); return { id: byId.has(id) ? id : 'home', params: Object.fromEntries(new URLSearchParams(q || '')) }; };
   function render() {
     const { id, params } = parse();
-    cleanup?.(); cleanup = null; app.demoChord = null;
+    cleanup?.(); cleanup = null; app.demoChord = null; app.practice?.stopAll?.();   // trocar de tela sempre encerra o exercício (e o metrônomo) em andamento
     current = byId.get(id);
     $('#title').textContent = current.title;
     $$('#nav button').forEach((b) => { if (b.dataset.id === id) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });

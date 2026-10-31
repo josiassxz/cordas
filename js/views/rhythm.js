@@ -2,7 +2,8 @@
 import { esc, icon, paintIcons, clamp } from '../core/dom.js';
 import { Transport } from '../engine/transport.js';
 import { Lane } from '../engine/lane.js';
-import { TIME_SIGNATURES, SUBDIVISIONS, STRUM_PATTERNS, PROGRESSIONS, shapeOf, allShapes, upgradeShapes } from '../content/patterns.js';
+import { pickChords } from '../ui/chord-picker.js';
+import { TIME_SIGNATURES, SUBDIVISIONS, STRUM_PATTERNS, PROGRESSIONS, shapeOf, allShapes, upgradeShapes, ensureShapes } from '../content/patterns.js';
 import { strumScore } from '../content/techniques.js';
 import { normalizeScore } from '../engine/score.js';
 
@@ -56,7 +57,7 @@ export default {
         <div class="rt-bpm"><button class="btn icon lg" data-b="-5" aria-label="Diminuir 5 BPM">−</button><div><div class="big-num num" id="bpmv">${s.bpm}</div><small class="dim" id="bpmsub">BPM</small></div><button class="btn icon lg" data-b="5" aria-label="Aumentar 5 BPM">+</button></div>
         <input type="range" id="bpmr" min="30" max="240" value="${s.bpm}" aria-label="BPM">
         <div class="row wrap center" style="margin:6px 0 2px"><button class="play-lg" data-a="toggle" aria-label="Iniciar"></button><button class="btn icon" data-a="restart" aria-label="Reiniciar" title="Reiniciar">${icon('restart')}</button><button class="btn" data-a="tap">Tap tempo</button></div>
-        <div class="pr-hw lane" id="mlane" style="height:260px;max-width:none"><canvas aria-label="Pista do metrônomo"></canvas></div>
+        <div class="pr-hw lane" id="mlane" style="height:220px;max-width:none"><canvas aria-label="Pista do metrônomo"></canvas></div>
         <div class="rt-opts">
           <div class="field"><span class="h3">Compasso</span><div class="seg" id="sigs">${TIME_SIGNATURES.map((t) => `<button data-sig="${t.id}" aria-pressed="${t.id === s.sig}" title="${t.note}">${t.label}</button>`).join('')}</div></div>
           <div class="field"><span class="h3">Subdivisão</span><div class="seg" id="subs">${SUBDIVISIONS.map((t) => `<button data-sub="${t.id}" aria-pressed="${t.id === s.sub}">${t.label}</button>`).join('')}</div></div>
@@ -121,7 +122,7 @@ export default {
         root.innerHTML = `<div class="panel col rt-cfg">
           <div class="field"><span class="h3">Compasso</span><div class="seg">${TIME_SIGNATURES.map((t) => `<button data-sig="${t.id}" aria-pressed="${t.id === s.sig}">${t.label}</button>`).join('')}</div></div>
           <div class="field"><span class="h3">Padrão de batida</span><div class="rt-pats">${pats.map(([n, sl], i) => `<button class="rt-pat" data-pat="${i}" aria-pressed="${i === s.pat}"><b>${esc(n)}</b><code>${[...sl].map((c) => (c === 'D' ? '↓' : c === 'U' ? '↑' : '·')).join(' ')}</code></button>`).join('')}</div></div>
-          ${withProg ? `<div class="field"><span class="h3">Progressão (um acorde por compasso)</span><div class="rt-pats">${PROGRESSIONS.map((p) => `<button class="rt-pat" data-prog="${p.id}" aria-pressed="${p.id === s.prog}"><b>${esc(p.name)}</b><small class="dim">${esc(p.desc)}</small></button>`).join('')}</div></div>`
+          ${withProg ? `<div class="field"><span class="h3">Progressão (um acorde por compasso)</span><div class="rt-pats">${PROGRESSIONS.map((p) => `<button class="rt-pat" data-prog="${p.id}" aria-pressed="${p.id === s.prog}"><b>${esc(p.name)}</b><small class="dim">${esc(p.desc)}</small></button>`).join('')}<button class="rt-pat" data-pickprog aria-pressed="${s.prog === 'custom'}"><b>${s.prog === 'custom' ? esc((s.custom || []).join(' – ')) : '＋ Montar a minha'}</b><small class="dim">${s.prog === 'custom' ? 'Sua sequência — toque para editar' : 'Escolha os acordes numa lista visual'}</small></button></div></div>`
             : `<div class="field"><span class="h3">Acorde</span><select id="chord">${chords.map((c) => `<option ${c === s.chord ? 'selected' : ''}>${c}</option>`).join('')}</select></div>`}
           <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
             <div class="field"><span class="h3">Andamento <b class="num" id="bv">${s.bpm}</b> BPM</span><input type="range" id="bpm" min="40" max="160" value="${s.bpm}"></div>
@@ -133,14 +134,16 @@ export default {
         root.querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', ((r.value - r.min) / (r.max - r.min)) * 100 + '%'));
       };
       draw();
-      root.onclick = (e) => {
+      root.onclick = async (e) => {
         const b = e.target.closest('button'); if (!b) return;
         if (b.dataset.sig) { s.sig = b.dataset.sig; s.pat = 0; draw(); }
         else if (b.dataset.pat) { s.pat = +b.dataset.pat; draw(); }
         else if (b.dataset.prog) { s.prog = b.dataset.prog; draw(); }
+        else if ('pickprog' in b.dataset) { pickChords({ title: 'Monte sua progressão (um acorde por compasso)', initial: s.custom || [], min: 2, max: 16, presets: PROGRESSIONS.map((p) => ({ name: p.name, symbols: p.chords })) }).then((seq) => { if (seq) { s.custom = seq; s.prog = 'custom'; draw(); } }); }
         else if (b.dataset.bars) { s.bars = +b.dataset.bars; draw(); }
         else if ('go' in b.dataset) {
-          const sg = sigOf(s.sig), [pname, slots] = BY_SIG[s.sig][s.pat], pr = PROGRESSIONS.find((p) => p.id === s.prog);
+          const sg = sigOf(s.sig), [pname, slots] = BY_SIG[s.sig][s.pat], pr = s.prog === 'custom' && s.custom ? { id: 'custom-' + s.custom.join('_'), name: 'Minha progressão', chords: s.custom } : PROGRESSIONS.find((p) => p.id === s.prog);
+          if (withProg) { try { await ensureShapes(pr.chords); } catch (err) { app.toast(err.message); return; } }
           const score = strumScore({ id: `rhythm-${withProg ? 'prog' : 'pat'}-${s.sig}-${slots}-${withProg ? s.prog : s.chord}`.replace(/[^\w-]/g, '_'), title: withProg ? `${pname} · ${pr.name}` : `${pname} · ${s.chord}`, technique: withProg ? 'chord-change' : 'rhythm', level: 2, bpm: s.bpm, chords: withProg ? pr.chords : [s.chord], slots, bars: s.bars, beatsPerBar: sg.beats, sub: sg.sub });
           const host = root; launch(host, score, {}, { guide: s.guide });
         }

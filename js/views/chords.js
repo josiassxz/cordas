@@ -6,6 +6,7 @@ import {
   expectedPositions, matchVoicing, diffByString,
 } from '../music/chords.js';
 import { chordDiagram } from '../ui/chord-diagram.js';
+import { pickChords } from '../ui/chord-picker.js';
 import { PROGRESSION_PRESETS, PAIR_PRESETS, POSITION_PRESETS, DRILL_KINDS, buildDrill } from '../content/chord-drills.js';
 
 const ESSENTIALS = ['Em', 'Am', 'E', 'A', 'D', 'C', 'G', 'Dm'];
@@ -22,7 +23,7 @@ export default {
       mode: ['library', 'listen', 'drills'].includes(params.mode) ? params.mode : 'library',
       symbol: parseSymbol(params.symbol) ? symbolOf(...Object.values(parseSymbol(params.symbol))) : (sessionStorage.getItem('corda.chord') || 'Em'),
       vi: +params.v || 0, root: null, cat: null, q: '', diff: null, tag: null, favOnly: false,
-      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0 },
+      queue: 'essentials', paused: false, drillKind: 'pair', drill: { bpm: 60, beatsPerChord: 4, rounds: 4, mode: 'timed', a: 'G', b: 'C', symbol: 'C', preset: 0, custom: ['G', 'D', 'Em', 'C'] },
     };
     const parsed = parseSymbol(S.symbol) || { root: 4, quality: 'min' };
     S.root = parsed.root;
@@ -222,6 +223,7 @@ export default {
       try {
         if (S.drillKind === 'pair') return buildDrill('pair', { a: d.a, b: d.b, ...o });
         if (S.drillKind === 'progression') { const p = PROGRESSION_PRESETS[d.preset % PROGRESSION_PRESETS.length]; return buildDrill('progression', { symbols: p.symbols, title: `Progressão ${p.name}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) }); }
+        if (S.drillKind === 'custom') return buildDrill('progression', { symbols: d.custom, title: `Minha sequência: ${d.custom.join(' – ')}`, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         if (S.drillKind === 'positions') return buildDrill('positions', { symbol: d.symbol, ...o, rounds: Math.max(1, Math.round(d.rounds / 2)) });
         return buildDrill('voicings', { symbol: d.symbol, ...o });
       } catch (e) { return { error: e.message }; }
@@ -231,7 +233,9 @@ export default {
       const kind = DRILL_KINDS.find((k) => k.id === S.drillKind);
       const picker = S.drillKind === 'pair' ? `<div class="row wrap">${PAIR_PRESETS.map(([a, b]) => `<button class="chip ${d.a === a && d.b === b ? 'on' : ''}" data-pair="${a}|${b}">${a} ↔ ${b}</button>`).join('')}</div>
           <div class="row"><label class="field grow"><span>Acorde A</span><input id="dA" type="text" value="${esc(d.a)}"></label><label class="field grow"><span>Acorde B</span><input id="dB" type="text" value="${esc(d.b)}"></label></div>`
-        : S.drillKind === 'progression' ? `<div class="ch-cards" style="grid-template-columns:1fr">${PROGRESSION_PRESETS.map((p, i) => `<button class="ch-prog ${d.preset === i ? 'on' : ''}" data-preset="${i}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}</div>`
+        : S.drillKind === 'custom' ? `<div class="ch-mine"><div class="row wrap" style="gap:6px">${d.custom.map((c, i) => `<span class="chip ch-minechip"><small class="dim">${i + 1}</small> ${esc(c)}</span>`).join('<span class="dim">→</span>')}</div>
+            <button class="btn primary" data-act="pickseq">${icon('plus') || ''} Escolher / editar acordes…</button><small class="dim">Qualquer acorde da biblioteca, com quantos você quiser.</small></div>`
+        : S.drillKind === 'progression' ? `<div class="ch-cards" style="grid-template-columns:1fr">${PROGRESSION_PRESETS.map((p, i) => `<button class="ch-prog ${d.preset === i ? 'on' : ''}" data-preset="${i}"><b>${p.name}</b><small>${p.desc}</small></button>`).join('')}<button class="ch-prog" data-act="pickseq"><b>＋ Montar a minha</b><small>Escolha os acordes numa lista visual</small></button></div>`
         : `<div class="row wrap">${POSITION_PRESETS.map((s) => `<button class="chip ${d.symbol === s ? 'on' : ''}" data-dsym="${s}">${s}</button>`).join('')}</div>
           <label class="field"><span>Outro acorde</span><input id="dS" type="text" value="${esc(d.symbol)}"></label>`;
       const seq = dr.error ? `<div class="empty">${esc(dr.error)}</div>` : `<div class="ch-seq">${dr.sequence.map((v, i) => `<div class="ch-step"><small>${i + 1}</small>${chordDiagram(v, { size: dr.sequence.length <= 4 ? 'md' : 'sm', showTitle: true })}</div>`).join('<span class="ch-arrow">→</span>')}<span class="ch-arrow">↻</span></div>`;
@@ -254,11 +258,18 @@ export default {
       paintIcons(body);
       clearStage();
     }
+    async function pickSeq() {
+      const seq = await pickChords({ title: 'Monte sua sequência de acordes', initial: S.drill.custom, min: 2, max: 16, presets: PROGRESSION_PRESETS.map((p) => ({ name: p.name, symbols: p.symbols })) });
+      if (!seq) return;
+      S.drill.custom = seq; S.drillKind = 'custom'; renderDrills();
+    }
     function startDrill() {
       const dr = currentDrill(); if (dr.error || !app.practice?.ready) return;
-      handle?.stop?.();
+      handle?.destroy?.();
       const host = $('#drillHost', el);
-      handle = app.practice.start(dr.score, { host, bpm: S.drill.bpm, repeat: 'loop', onFinish: () => toast('Exercício concluído') });
+      const startRow = $('[data-act=startdrill]', el)?.closest('.row'); if (startRow) startRow.hidden = true;   // Iniciar/Pausar ficam juntos, na barra do exercício
+      handle = app.practice.start(dr.score, { host, bpm: S.drill.bpm, repeat: 'loop', onFinish: () => { toast('Exercício concluído'); if (startRow) startRow.hidden = false; } });
+      host.scrollIntoView?.({ block: 'nearest' });
     }
 
     // ---------- navegação / ações ----------
@@ -276,7 +287,7 @@ export default {
     el.addEventListener('click', (e) => {
       const t = e.target.closest('button'); if (!t) return;
       const d = t.dataset;
-      if (d.mode) { flushSession(); if (S.mode === 'drills') { handle?.stop?.(); handle = null; } S.mode = d.mode; render(); }
+      if (d.mode) { flushSession(); if (S.mode === 'drills') { handle?.destroy?.(); handle = null; } S.mode = d.mode; render(); }
       else if (d.root != null) { S.root = +d.root; select(symbolOf(S.root, parseSymbol(S.symbol)?.quality || 'maj')); }
       else if (d.cat != null) { S.cat = d.cat === 'Todas' ? null : d.cat; render(); }
       else if (d.sym) { S.q = ''; select(d.sym); }
@@ -299,6 +310,7 @@ export default {
       else if (d.act === 'skip') next();
       else if (d.act === 'pause') { tick(); S.paused = !S.paused; session.last = performance.now(); if (S.paused) clearTimeout(timer); renderListen(); }
       else if (d.act === 'startdrill') startDrill();
+      else if (d.act === 'pickseq') pickSeq();
     });
     el.addEventListener('input', (e) => {
       if (e.target.id === 'chQ') { S.q = e.target.value; const pos = e.target.selectionStart; renderLibrary(); const i = $('#chQ', el); i.focus(); i.setSelectionRange(pos, pos); }
@@ -313,7 +325,7 @@ export default {
     session.last = performance.now();
     render();
     return () => {
-      flushSession(); clearTimeout(timer); handle?.stop?.();
+      flushSession(); clearTimeout(timer); handle?.destroy?.();
       for (const [n, f] of [['strumstart', onStart], ['noteon', onNote], ['strum', onStrum]]) guitar.removeEventListener(n, f);
       clearStage();
     };

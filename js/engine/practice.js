@@ -12,15 +12,17 @@ const LEVELS = ['Iniciante', 'Básico', 'Intermediário', 'Avançado', 'Expert']
 const MSG = { perfect: 'Perfeito', good: 'Bom', ok: 'No limite', miss: 'Perdeu' };
 
 export function installPractice(app) {
-  app.practice = { ready: true, start: (score, opts = {}) => startPractice(app, score, opts) };
+  app.practice = { ready: true, current: null, start: (score, opts = {}) => startPractice(app, score, opts), stopAll() { this.current?.destroy(); this.current = null; } };
 }
 
 function startPractice(app, score, opts = {}) {
+  app.practice.stopAll();   // só existe UM exercício ativo: o anterior é desmontado (tecla P, clique e áudio) antes de começar outro
   const deps = { guitar: app.guitar, audio: app.audio, learn: app.learn, settings: () => app.store.get('settings') };
   const run = new Runner(deps, score, { ...opts, onFinish: undefined });
   let ui = null;
   const handle = run;
-  handle.destroy = ((orig) => () => { ui?.destroy(); ui = null; orig(); app.demoChord = null; clearStage(app); })(run.destroy.bind(run));
+  handle.destroy = ((orig) => () => { ui?.destroy(); ui = null; orig(); if (app.practice.current === handle) app.practice.current = null; app.demoChord = null; clearStage(app); })(run.destroy.bind(run));
+  app.practice.current = handle;
   if (opts.host) ui = mountUI(app, run, opts);
   app.demoChord = () => run.demoFrets();
   if (opts.autostart !== false) run.start();

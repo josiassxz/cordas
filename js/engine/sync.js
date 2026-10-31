@@ -15,7 +15,7 @@ export function openSync(app) {
     <h2 class="h2">Sincronizar com a guitarra</h2>
     <p class="muted">Palhete <b>junto com cada clique</b> (quando a seta chegar na linha), olhando o tempo e não a tela. O app mede o atraso médio entre você e o clique, e compensa na avaliação dos exercícios.</p>
     <div class="row" style="gap:12px;margin:8px 0"><span class="h3">Andamento</span><div class="seg" id="syBpm">${[60, 80, 100].map((b) => `<button type="button" data-b="${b}" aria-pressed="${b === 80}">${b} BPM</button>`).join('')}</div></div>
-    <div class="pr-hw lane" style="height:300px"><canvas></canvas></div>
+    <div class="pr-hw lane" style="height:230px"><canvas></canvas></div>
     <div class="sync-read num"><div><small>Acertos medidos</small><b id="syN">0/${BEATS}</b></div><div><small>Atraso médio</small><b id="syMean">–</b></div><div><small>Variação</small><b id="syVar">–</b></div></div>
     <p class="muted" id="syMsg">Aperte <b>Começar</b>, espere a contagem e toque ${BEATS} tempos.</p>
     <div class="row between"><button type="button" class="btn" id="syClose">Fechar</button><div class="row"><button type="button" class="btn primary" id="syGo">${icon('play')} Começar</button><button type="button" class="btn primary" id="syApply" hidden>Aplicar</button></div></div>

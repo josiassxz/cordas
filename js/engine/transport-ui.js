@@ -63,7 +63,7 @@ export function mountTransport(host, run, { keys = true } = {}) {
   host.addEventListener('change', (e) => { if (e.target.dataset.a === 'subclick') run.setSubClick(e.target.checked); if (e.target.dataset.a === 'guide') run.setGuide(e.target.checked); if (e.target.dataset.a === 'click') run.setClick(e.target.checked); });
   const offs = [run.on('state', paint), run.on('tempo', paint), run.on('progress', prog), run.on('pass', prog)];
   const key = (e) => {
-    if (e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return;
+    if (!host.isConnected || e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return;
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); run.toggle(); } else if (e.key === 'r' || e.key === 'R') run.restart();
   };
   if (keys) document.addEventListener('keydown', key);
