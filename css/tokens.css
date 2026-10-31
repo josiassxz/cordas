@@ -1,0 +1,22 @@
+/* Design tokens do Corda. Nada de cor solta fora daqui. */
+:root{
+  color-scheme:dark;
+  --font:ui-sans-serif,"SF Pro Text","SF Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-display:ui-rounded,"SF Pro Rounded","SF Pro Display",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+
+  --bg:#0a0b0f; --surface:#12141a; --raised:#181b23; --raised-2:#1f232d; --hair:rgba(255,255,255,.07); --hair-2:rgba(255,255,255,.12);
+  --tx:#eceef3; --tx-2:#9aa1b2; --tx-3:#646b7c;
+
+  --accent:#f5a524; --accent-2:#ffc65c; --accent-ink:#1b1200; --accent-soft:rgba(245,165,36,.14);
+  --expected:#6ea8fe; --ok:#3ddc97; --bad:#ff6370; --warn:#f5a524; --avoid:#6b7280;
+  --f1:#ff9d5c; --f2:#3ddc97; --f3:#6ea8fe; --f4:#c58bff;     /* cores dos dedos 1-4 */
+
+  --r-sm:8px; --r:12px; --r-lg:18px; --r-xl:24px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+  --ease:cubic-bezier(.2,.8,.2,1); --dur:.18s;
+  --shadow:0 18px 50px rgba(0,0,0,.45);
+
+  --fb-wood-a:#2c231c; --fb-wood-b:#1c1612;
+  --side-w:216px; --stage-h:268px;
+}

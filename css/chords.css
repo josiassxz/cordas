@@ -1,0 +1,74 @@
+/* Tela Acordes (frente ACORDES). Só tokens de tokens.css. */
+.chords{gap:var(--sp-4)}
+.ch-split{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:var(--sp-5);align-items:start}
+.ch-left{display:flex;flex-direction:column;gap:var(--sp-4);position:sticky;top:0}
+.ch-rail{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.ch-root{padding:8px 0;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--hair);font-weight:700;color:var(--tx-2);transition:.15s}
+.ch-root:hover{background:var(--raised);color:var(--tx)}
+.ch-root.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.ch-cats{display:flex;gap:6px;flex-wrap:wrap}
+.ch-cats .chip{cursor:pointer}
+.ch-group+.ch-group{margin-top:var(--sp-3)}.ch-group h4{margin-bottom:6px}
+.ch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:6px}
+.ch-q{position:relative;padding:8px 6px;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--hair);font-weight:650;font-size:13px;color:var(--tx);transition:.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-q:hover{background:var(--raised);border-color:var(--hair-2)}
+.ch-q.on{background:var(--accent-soft);border-color:rgba(245,165,36,.5);color:var(--accent-2)}
+.ch-q.done::after{content:"★";position:absolute;top:1px;right:4px;font-size:10px;color:var(--accent)}
+.ch-filters{display:flex;flex-direction:column;gap:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--hair)}
+.ch-filters .chip{cursor:pointer}
+.ch-results{display:flex;flex-direction:column;gap:var(--sp-2)}
+.ch-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:var(--sp-2)}
+.ch-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px 8px;border-radius:var(--r);background:var(--raised);border:1px solid var(--hair);transition:.15s;font-size:12px;color:var(--tx-2)}
+.ch-card:hover{border-color:var(--hair-2);background:var(--raised-2)}
+.ch-card.on{border-color:var(--accent);background:var(--accent-soft);color:var(--tx)}
+.ch-card svg{max-width:100%;height:auto}
+.ch-dots{display:inline-flex;gap:3px;vertical-align:middle}.ch-dots i{width:6px;height:6px;border-radius:50%;background:var(--raised-2)}.ch-dots i.on{background:var(--accent)}
+
+.ch-detail{min-height:420px}
+.ch-head{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4)}
+.ch-name{font:750 44px/1.05 var(--font-display);letter-spacing:-.03em}
+.ch-star{color:var(--accent);font-size:.6em;margin-left:4px}
+.ch-main{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:var(--sp-5);align-items:start}
+.ch-big svg{width:100%;height:auto}
+.ch-info{display:flex;flex-direction:column;gap:var(--sp-3)}
+.ch-info>div{display:grid;grid-template-columns:130px 1fr;gap:var(--sp-3);padding-bottom:var(--sp-3);border-bottom:1px solid var(--hair)}
+.ch-info>div:last-child{border:0}
+.ch-info dt{color:var(--tx-3);font-weight:600}.ch-info dd{margin:0}
+.ch-voicings{margin-top:var(--sp-5)}.ch-voicings h4{margin-bottom:var(--sp-2)}
+
+/* escuta livre */
+.ch-listen{display:flex;flex-direction:column;gap:var(--sp-5)}
+.ch-lhead{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap}
+.ch-lbody{display:grid;grid-template-columns:minmax(200px,260px) 1fr;gap:var(--sp-5)}
+.ch-fb{min-height:68px;display:flex;align-items:center;justify-content:center;gap:12px;padding:12px 18px;border-radius:var(--r-lg);background:var(--raised);border:1px solid var(--hair);font-weight:650;text-align:center;transition:background .2s,border-color .2s}
+.ch-fb.ok{background:rgba(61,220,151,.1);border-color:var(--ok);color:var(--ok);animation:chpop .35s var(--ease)}
+.ch-fb.bad{background:rgba(255,99,112,.09);border-color:rgba(255,99,112,.5);color:#ffa4ad}
+.ch-fb.paused{background:var(--accent-soft);border-color:rgba(245,165,36,.45);color:var(--accent-2)}
+.ch-fb .ic{width:18px;height:18px}
+.ch-listening{width:10px;height:10px;border-radius:50%;background:var(--ok);animation:chring 1.6s infinite;flex:none}
+@keyframes chring{0%{box-shadow:0 0 0 0 rgba(61,220,151,.5)}100%{box-shadow:0 0 0 14px rgba(61,220,151,0)}}
+@keyframes chpop{0%{transform:scale(.97)}60%{transform:scale(1.015)}100%{transform:scale(1)}}
+.ch-strs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.ch-s{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:var(--r);background:var(--raised);border:1px solid var(--hair);transition:.2s}
+.ch-s small{font-size:11px;color:var(--tx-3)}.ch-s b{font:700 16px var(--font-display)}
+.ch-s.ok{background:rgba(61,220,151,.12);border-color:var(--ok)}
+.ch-s.wrong,.ch-s.octave,.ch-s.avoid-hit{background:rgba(255,99,112,.1);border-color:var(--bad)}
+.ch-s.missing{border-style:dashed;border-color:var(--warn);background:var(--accent-soft)}
+.ch-s.avoid-ok{opacity:.45}
+.ch-s.pending b{color:var(--expected)}
+
+/* troca de acordes */
+.ch-seq{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;padding:var(--sp-4);border-radius:var(--r);background:var(--raised);margin-bottom:var(--sp-4)}
+.ch-step{display:flex;flex-direction:column;align-items:center;gap:2px}.ch-step small{color:var(--tx-3);font-weight:700}
+.ch-arrow{color:var(--tx-3);font-size:20px}
+.ch-cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-4);margin-bottom:var(--sp-4)}
+.ch-prog{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:var(--r);background:var(--raised);border:1px solid var(--hair);text-align:left;transition:.15s}
+.ch-prog small{color:var(--tx-3)}.ch-prog:hover{border-color:var(--hair-2)}.ch-prog.on{border-color:var(--accent);background:var(--accent-soft)}
+.ch-drillhost{margin-bottom:var(--sp-3)}.ch-drillhost:empty{display:none}
+
+@media (max-width:1000px){.ch-split,.ch-main,.ch-lbody{grid-template-columns:1fr}.ch-left{position:static}.ch-big{max-width:240px}}
+
+.ch-kinds{display:flex;flex-direction:column;gap:6px}
+.ch-kinds button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--hair);text-align:left;transition:.15s}
+.ch-kinds button small{color:var(--tx-3)}.ch-kinds button:hover{background:var(--raised)}.ch-kinds button.on{border-color:var(--accent);background:var(--accent-soft)}
+.chords .btn.lg{white-space:nowrap}

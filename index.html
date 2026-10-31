@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Corda · estúdio de guitarra</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/fretboard.css">
+<!-- um arquivo de estilo por tela; cada frente de trabalho edita só o seu -->
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/train.css">
+<link rel="stylesheet" href="css/chords.css">
+<link rel="stylesheet" href="css/rhythm.css">
+<link rel="stylesheet" href="css/songs.css">
+<link rel="stylesheet" href="css/tones.css">
+<link rel="stylesheet" href="css/progress.css">
+<link rel="stylesheet" href="css/lab.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo" aria-hidden="true"></span>Corda</div>
+    <nav class="nav" id="nav" aria-label="Seções"></nav>
+    <div class="side-foot">
+      <button class="instr" id="instrBtn" aria-haspopup="true"><i data-icon="guitar"></i><span><small>Instrumento</small><b id="instrName">Guitarra</b></span><i data-icon="chev"></i></button>
+      <button id="settingsBtn"><i data-icon="gear"></i><span>Ajustes</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <h1 id="title"></h1>
+      <button id="status" class="status" data-s="idle" aria-live="polite"><span class="dot"></span><span id="statusText">Conectar guitarra</span></button>
+    </header>
+    <div id="view" class="view" tabindex="-1"></div>
+  </main>
+
+  <section class="stage" id="stage" aria-label="Braço da guitarra ao vivo">
+    <div class="stage-head">
+      <span class="live"><span class="badge live">ao vivo</span></span>
+      <span class="chord" id="stageChord">—</span>
+      <span class="notes" id="stageNotes"></span>
+      <span class="grow"></span>
+      <span class="row" role="group" aria-label="Tamanho do braço">
+        <button class="btn ghost sm" id="stageSmaller" aria-label="Diminuir braço" title="Diminuir braço">A−</button>
+        <button class="btn ghost sm" id="stageBigger" aria-label="Aumentar braço" title="Aumentar braço">A+</button>
+      </span>
+      <button class="btn ghost sm" id="stageToggle" aria-expanded="true">Recolher</button>
+    </div>
+    <div id="stageBoard"></div>
+  </section>
+</div>
+
+<div id="menu" class="panel" hidden style="position:fixed;left:12px;bottom:90px;width:210px;padding:6px;z-index:40"></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<dialog id="settings">
+  <form method="dialog" class="sheet">
+    <h2 class="h2">Ajustes</h2>
+    <label class="field"><span class="row between">Compensação de latência <output id="latOut" class="num"></output></span>
+      <input type="range" id="latency" min="0" max="250" step="5">
+      <small>O Bluetooth atrasa um pouco o sinal. O app sugere o valor depois de cada exercício.</small></label>
+    <label class="field"><span class="row between">Desvio de afinação (semitons) <output id="offOut" class="num"></output></span>
+      <input type="range" id="pitchOffset" min="-3" max="3" step="1">
+      <small>Se o braço mostra trastes errados (ex.: −1), calibre aqui ou em Laboratório.</small></label>
+    <label class="field"><span class="row between">Tamanho do braço <output id="stageOut" class="num"></output></span>
+      <input type="range" id="stageScale" min="100" max="300" step="10">
+      <small>Também dá para usar A− / A+ ao lado do braço.</small></label>
+    <label class="field"><span class="row between">Duração da vibração da corda <output id="susOut" class="num"></output></span>
+      <input type="range" id="sustainMs" min="500" max="8000" step="250">
+      <small>A guitarra não avisa quando a corda para (só o palm mute, que silencia tudo). O app apaga a nota depois desse tempo.</small></label>
+    <label class="field"><span>Rigor do acorde</span>
+      <select id="rigor"><option value="root">Leve — basta a nota raiz</option><option value="normal">Normal — raiz e terça certas</option><option value="strict">Estrito — só as notas do acorde</option></select></label>
+    <label class="field"><span>Notação</span>
+      <select id="flats"><option value="0">Sustenidos (C#, F#)</option><option value="1">Bemóis (Db, Gb)</option></select></label>
+    <label class="row"><input type="checkbox" id="synth"><span>Tocar som no navegador quando a guitarra soar</span></label>
+    <label class="row"><input type="checkbox" id="auto"><span>Avançar sozinho após acertar um acorde</span></label>
+    <div class="row between" style="margin-top:6px">
+      <button type="button" class="btn ghost danger" id="resetBtn">Zerar progresso</button>
+      <button class="btn primary" value="ok">Pronto</button>
+    </div>
+  </form>
+</dialog>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

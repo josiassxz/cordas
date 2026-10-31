@@ -1,0 +1,24 @@
+.home{gap:var(--sp-6)}
+.hm-hello p{margin-top:4px}
+.hm-onboard{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-5);padding:var(--sp-5);border-radius:var(--r-xl);background:linear-gradient(120deg,var(--raised),var(--surface))}
+.hm-steps{margin:12px 0 0;padding:0;list-style:none;counter-reset:s;display:grid;gap:8px;color:var(--tx-2)}
+.hm-steps li{display:flex;gap:10px;align-items:center}
+.hm-steps li::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--raised-2);color:var(--tx);font-size:12px;font-weight:700}
+.hm-live{display:flex;gap:12px;align-items:center}
+.hm-today{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-7);align-items:center}
+.hm-goal{display:flex;align-items:center;gap:var(--sp-5)}
+.hm-ring{position:relative;width:148px;height:148px}
+.ring-bg{fill:none;stroke:var(--raised-2)}.ring-fg{fill:none;stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .6s var(--ease)}
+.hm-ring-txt{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.hm-ring-txt b{font:700 40px/1 var(--font-display);letter-spacing:-.03em}.hm-ring-txt span{font-size:12px;color:var(--tx-3)}
+.hm-rec{display:flex;flex-direction:column;gap:10px}.hm-rec-title{font-size:30px}
+.hm-row{display:grid;grid-template-columns:1.4fr 1fr 1.2fr;gap:var(--sp-6);padding-top:var(--sp-5);border-top:1px solid var(--hair)}
+.hm-last{display:flex;flex-direction:column;gap:4px;text-align:left;padding:0;transition:opacity var(--dur)}
+.hm-last b{font:650 20px var(--font-display)}.hm-last:not(.static):hover b{color:var(--accent-2)}
+.hm-stat{display:flex;flex-direction:column;gap:6px}
+.hm-week{display:flex;align-items:flex-end;gap:6px;height:52px}
+.hm-week i{flex:1;border-radius:3px;background:var(--raised-2);min-height:4px}.hm-week i.on{background:var(--accent)}
+.hm-links{display:flex;flex-wrap:wrap;gap:6px}
+.hm-links button{padding:8px 14px;border-radius:99px;color:var(--tx-2);font-weight:600;background:var(--surface);transition:.15s}
+.hm-links button:hover{color:var(--tx);background:var(--raised-2)}
+@media (max-width:900px){.hm-today,.hm-row{grid-template-columns:1fr}.hm-onboard{flex-direction:column;align-items:stretch}}

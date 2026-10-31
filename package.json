@@ -1,0 +1,1 @@
+{ "name": "corda", "private": true, "type": "module", "scripts": { "test": "node --test --test-force-exit --test-timeout=30000 tests/*.test.mjs", "serve": "./serve.sh" } }

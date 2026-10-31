@@ -1,0 +1,29 @@
+.fretboard{--c-live:var(--accent)}
+.fb-board{stroke:rgba(255,255,255,.05)}
+.fb-fret{stroke:#6c6f78;stroke-width:1.6;opacity:.7}
+.fb-nut{fill:#d8d2c4;opacity:.9}
+.fb-num{fill:var(--tx-3);font:600 11px var(--font)}
+.fb-inlay{fill:rgba(255,255,255,.1)}
+.fb-string{stroke:#aab0be;opacity:.75;transition:opacity .2s,stroke .2s}
+.fb-string:nth-of-type(n){stroke-linecap:round}
+.fb-string.vibrating{stroke:var(--accent-2);opacity:1;animation:vib .09s linear infinite alternate}
+@keyframes vib{from{transform:translateY(-.6px)}to{transform:translateY(.6px)}}
+.fb-string.avoid{opacity:.18;stroke-dasharray:3 5}
+.fb-label{fill:var(--tx-2);font:700 13px var(--font)}.fb-label.avoid{fill:var(--bad);font-size:18px}
+
+/* esperado pelo exercício: anel azul; cor do dedo no número */
+.fb-exp circle{fill:rgba(110,168,254,.12);stroke:var(--expected);stroke-width:2;transition:fill .2s,stroke .2s}
+.fb-exp text{fill:var(--tx);font:700 12px var(--font)}
+.fb-exp.f1 circle{stroke:var(--f1)}.fb-exp.f2 circle{stroke:var(--f2)}.fb-exp.f3 circle{stroke:var(--f3)}.fb-exp.f4 circle{stroke:var(--f4)}
+.fb-exp.hit circle{fill:rgba(61,220,151,.4);stroke:var(--ok)}
+.fb-exp.miss circle{fill:rgba(255,99,112,.18);stroke:var(--bad);stroke-dasharray:3 3}
+
+/* tocado de verdade (evento do dispositivo): ponto cheio + anel de ataque */
+.fb-note .dot{fill:var(--c-live);filter:drop-shadow(0 0 7px rgba(245,165,36,.55))}
+.fb-note .ring{fill:none;stroke:var(--c-live);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:attack .5s var(--ease) forwards}
+@keyframes attack{from{transform:scale(.6);opacity:.95}to{transform:scale(2);opacity:0}}
+.fb-note .nm{fill:#1b1200;font:800 11px var(--font);pointer-events:none}
+.fb-note.off .dot{fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:3 3;filter:none}.fb-note.off .nm{fill:var(--warn)}
+.fb-note{transition:opacity .6s}.fb-note.released{opacity:0}
+.fb-res.ok circle{fill:none;stroke:var(--ok);stroke-width:3;animation:attack .7s var(--ease) forwards;transform-box:fill-box;transform-origin:center}
+.fb-res.bad circle{fill:none;stroke:var(--bad);stroke-width:3;animation:attack .7s var(--ease) forwards;transform-box:fill-box;transform-origin:center}

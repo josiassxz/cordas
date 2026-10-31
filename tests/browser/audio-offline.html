@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>rodando</title>
+<script type="module">
+import { AudioEngine } from '/js/audio/engine.js';
+import { BUILTIN, BUILTIN_BY_ID, defaultPreset, validatePreset } from '/js/audio/presets.js';
+const SR = 48000, out = { errors: [], presets: {}, checks: {} };
+addEventListener('error', (e) => out.errors.push(String(e.message)));
+addEventListener('unhandledrejection', (e) => out.errors.push(String(e.reason)));
+const stats = (a) => { let peak = 0, s = 0, bad = 0; for (const v of a) { if (!Number.isFinite(v)) bad++; const x = Math.abs(v); if (x > peak) peak = x; s += v * v; } return { peak, rms: Math.sqrt(s / a.length), bad }; };
+const render = async (preset, play, seconds = 1.6) => {
+  const ctx = new OfflineAudioContext(1, Math.floor(SR * seconds), SR), eng = new AudioEngine({ context: ctx });
+  eng.preset = validatePreset(preset).preset; eng.tempo = 100; ctx.__eng = eng; eng.context;   // força build
+  play(eng); return (await ctx.startRendering()).getChannelData(0);
+};
+try {
+  for (const p of BUILTIN) {
+    const data = await render(p, (e) => { e.strum([40, 47, 52, 56, 59, 64], 0.05, 'D', 0.4); e.click(1.2, true); });
+    out.presets[p.id] = stats(data);
+  }
+  // clique fora dos efeitos: o mesmo clique deve sair idêntico com reverb/delay/distorção ligados e desligados
+  const clickOnly = (e) => e.click(0.1, true);
+  const dry = await render({ ...defaultPreset() }, clickOnly, 0.5), wet = await render(BUILTIN_BY_ID['b:metal'], clickOnly, 0.5);
+  let maxDiff = 0; for (let i = 0; i < dry.length; i++) maxDiff = Math.max(maxDiff, Math.abs(dry[i] - wet[i]));
+  out.checks.clickMaxDiff = maxDiff; out.checks.clickPeak = stats(dry).peak;
+  // timbres realmente diferentes: aço (limpo) vs metal (saturado) têm RMS/pico diferentes e o metal tem mais energia em alta frequência
+  const hf = (a) => { let s = 0; for (let i = 1; i < a.length; i++) { const d = a[i] - a[i - 1]; s += d * d; } return s / a.length; };
+  const steel = await render(BUILTIN_BY_ID['b:steel'], (e) => e.pluck(52, 0.05, 0.5)), metal = await render(BUILTIN_BY_ID['b:metal'], (e) => e.pluck(52, 0.05, 0.5));
+  out.checks.hfSteel = hf(steel); out.checks.hfMetal = hf(metal);
+  // reverb e delay produzem cauda (energia depois da nota) — comparação com mesmo preset sem eles
+  const base = { ...BUILTIN_BY_ID['b:steel'], reverb: { ...BUILTIN_BY_ID['b:steel'].reverb, on: false }, delay: { ...BUILTIN_BY_ID['b:steel'].delay, on: false } };
+  const tail = (a) => stats(a.slice(Math.floor(SR * 1.2))).rms;
+  const short = { ...base, voice: { ...base.voice, sustain: 0 } };
+  const noFx = await render(short, (e) => e.pluck(64, 0.05, 0.5)), withFx = await render({ ...short, delay: { ...short.delay, on: true, time: 300, feedback: 0.6, mix: 0.5 }, reverb: { ...short.reverb, on: true, size: 2.5, mix: 0.6 } }, (e) => e.pluck(64, 0.05, 0.5));
+  out.checks.tailNoFx = tail(noFx); out.checks.tailWithFx = tail(withFx);
+  // A/B instantâneo
+  const eng = new AudioEngine({ context: new OfflineAudioContext(1, SR, SR) }); eng.context;
+  eng.setAB(BUILTIN_BY_ID['b:jazz'], BUILTIN_BY_ID['b:metal']);
+  out.checks.ab = [eng.preset.id, eng.toggleAB().id, eng.toggleAB().id];
+  // nível/volume
+  eng.volume = 0.3; out.checks.volume = eng.volume;
+} catch (e) { out.errors.push('EXCEÇÃO: ' + (e.stack || e)); }
+document.title = 'RESULT:' + JSON.stringify(out);
+</script>

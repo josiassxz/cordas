@@ -1,0 +1,6 @@
+.lab-log{height:300px;overflow:auto;font-size:12px;line-height:1.7;color:var(--tx-2)}
+.lab-log div:first-child{color:var(--tx)}
+.lab-map{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.lab-str{display:flex;flex-direction:column;align-items:center;padding:10px 4px;border-radius:var(--r);background:var(--raised)}
+.lab-str b{font-size:11px;color:var(--tx-3)}.lab-str span{font:700 18px var(--font-display)}.lab-str small{color:var(--tx-3);min-height:1.2em}
+.lab-caps{width:100%;border-collapse:collapse}.lab-caps td{padding:9px 8px;border-top:1px solid var(--hair);vertical-align:top}
