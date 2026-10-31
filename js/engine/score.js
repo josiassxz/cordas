@@ -76,3 +76,22 @@ export function validateScore(s) {
   if (s.ramp) need(s.ramp.step > 0 && s.ramp.max > s.bpm, 'ramp inválida');
   return err;
 }
+
+
+// Refaz o exercício numa nova grade (compasso e/ou batidas por tempo) A PARTIR DO ORIGINAL (mudar várias vezes não acumula erro).
+// Cada compasso é uma sequência de "fatias" (tempos × subdivisão). A mesma sequência é reaplicada na nova grade:
+// fatias a mais repetem o padrão para encher o compasso (ex.: 2 → 4 por tempo toca o padrão duas vezes), fatias a menos cortam o fim.
+export function relayoutScore(sc, newBpb, newSub) {
+  sc.base ??= { events: sc.events.map((e) => structuredClone(e)), sub: sc.subdivision, bpb: sc.beatsPerBar, length: sc.lengthBeats, chords: sc.chords ? sc.chords.map((c) => ({ ...c })) : null };
+  const B = sc.base, bars = Math.max(1, Math.round(B.length / B.bpb)), M = B.bpb * B.sub, N = newBpb * newSub, out = [];
+  for (const ev of B.events) {
+    const j = Math.min(bars - 1, Math.floor(ev.beat / B.bpb + 1e-9)), slot = (ev.beat - j * B.bpb) * B.sub;
+    for (let t = 0; slot + t * M < N - 1e-9; t++) {
+      const e = structuredClone(ev); e.beat = j * newBpb + (slot + t * M) / newSub; e.dur = (ev.dur ?? 0.5) * B.sub / newSub; out.push(e);
+    }
+  }
+  out.sort((a, b) => a.beat - b.beat);
+  sc.events = out; sc.beatsPerBar = newBpb; sc.subdivision = newSub; sc.lengthBeats = bars * newBpb;
+  if (B.chords) sc.chords = B.chords.map((c) => ({ ...c, beat: c.beat * newBpb / B.bpb }));
+  return sc;
+}

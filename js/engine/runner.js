@@ -3,7 +3,7 @@
 // Pausa congela o relógio (Transport), o guia sonoro e a avaliação (notas durante a pausa são ignoradas).
 import { Transport } from './transport.js';
 import { Evaluator, evalAttempt, GRADE_WEIGHT } from './evaluator.js';
-import { normalizeScore, isScored, expectedStrings, expectedPitch, expectedFret } from './score.js';
+import { normalizeScore, isScored, expectedStrings, expectedPitch, expectedFret, relayoutScore } from './score.js';
 import { matchChord, detectChord, noteAt } from '../music/theory.js';
 
 // Validação escolhida: { neck: conferir a montagem no braço, sound: 'off' | 'chord' | 'strings' }. Migra as opções antigas.
@@ -68,6 +68,7 @@ export class Runner {
   }
 
   reset() {
+    this.emit('reset', {});
     clearInterval(this.timer); this.transport?.stop();
     this.results = new Map(); this.chordResults = []; this.noteLog = []; this.pass = 0; this.activeMs = 0;
     this.floor = -Infinity; this.finished = false; this.summaryCache = null; this.chordCursor = { p: 0, k: 0 }; this.waitResults = [];
@@ -103,11 +104,18 @@ export class Runner {
   setRepeat(r) { this.passes = parseRepeat(r); if (this.evaluator) this.evaluator.passes = this.passes; this.emit('tempo', {}); }
   setGuide(on) { this.guide = !!on; if (this.transport) this.guideLast = this.transport.position(); }
   setValidation({ neck, sound }) { const e = this.evaluator; if (e) { if (neck != null) e.neckOn = neck; if (sound != null) { e.sound = sound; e.free = sound !== 'strings'; } } this.deps.setValidation?.({ neck, sound }); }
-  // Compasso (tempos por compasso) e subdivisão (batidas por tempo): mudam a grade da pista e o metrônomo, ao vivo.
+  // Compasso (tempos por compasso) e batidas por tempo: o exercício é REFEITO na nova grade e recomeça (tablaturas só mudam a grade).
   setMeter({ beats, sub } = {}) {
-    if (beats) this.score.beatsPerBar = beats;
-    if (sub) { this.score.subdivision = sub; if (this.evaluator) this.evaluator.sub = sub; }
-    this.transport?.setMeter({ beats, sub }); this.emit('tempo', {});
+    const s = this.score, nb = beats ?? s.beatsPerBar, ns = sub ?? s.subdivision;
+    if (nb === s.beatsPerBar && ns === s.subdivision) return;
+    if (s.fixedTiming) {
+      s.beatsPerBar = nb; s.subdivision = ns; if (this.evaluator) this.evaluator.sub = ns;
+      this.transport?.setMeter({ beats: nb, sub: ns }); this.emit('tempo', {}); return;
+    }
+    relayoutScore(s, nb, ns);
+    this.waitList = s.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
+    if (this._state === 'idle' || this._state === 'finished') { this.emit('tempo', {}); this.emit('reset', {}); return; }
+    this.restart(); this.emit('tempo', {});
   }
   setClick(on) { this.click = !!on; if (this.transport) this.transport.click = !!on; }
   setSubClick(on) { this.subClick = !!on; if (this.transport) this.transport.subClick = !!on; }

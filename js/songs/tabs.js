@@ -126,7 +126,7 @@ export function alphaTexToScore(track, meta) {
   return {
     id: `tab:${meta.id}:${meta.trackIndex}`, title: fold(meta.title).includes(fold(meta.artist)) ? meta.title : `${meta.artist} — ${meta.title}`, technique: 'song', level: 3, mode: 'timed',
     bpm: Math.max(30, Math.min(240, meta.tempo || 100)), beatsPerBar, subdivision: 2, lengthBeats, events, tuning,
-    tuningName: tuningName(tuning), standardTuning: std,
+    fixedTiming: true, tuningName: tuningName(tuning), standardTuning: std,
     // em afinação diferente o app só confere as CORDAS (a nota esperada seria enganosa se a guitarra física estiver afinada normalmente)
     ...(std ? {} : { noPitch: true }),
   };

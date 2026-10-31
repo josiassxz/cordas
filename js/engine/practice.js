@@ -86,6 +86,7 @@ function mountUI(app, run, opts) {
   }
 
   const offs = [
+    run.on('reset', () => { Object.keys(counts).forEach((k) => (counts[k] = 0)); paintStats(); needle.style.opacity = 0; summary.hidden = true; lastKey = null; }),
     run.on('state', () => { paintState(); lastKey = null; syncStage(); }),
     run.on('progress', syncStage),
     run.on('result', (r) => {

@@ -52,11 +52,16 @@ export class Highway {
       c.fillStyle = C['--tx-3']; c.font = '600 11px ui-sans-serif,system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(String(6 - s), 14, y); c.fillStyle = C['--tx-2']; c.fillText(NAMES[s], 28, y - 0.5);
     }
-    // batidas e compassos
-    for (let b = Math.ceil(pos - behind); b <= pos + VIS_BEATS + 1; b++) {
-      const x = X(b), bar = ((b % bpb) + bpb) % bpb === 0;
-      c.strokeStyle = bar ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.07)'; c.lineWidth = bar ? 1.5 : 1; c.beginPath(); c.moveTo(x, TOP - 6); c.lineTo(x, H - BOTTOM); c.stroke();
-      if (bar && b >= 0) { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.textAlign = 'left'; c.fillText(String(Math.floor(b / bpb) + 1), x + 4, TOP - 20); }
+    // grade do tempo: compasso > tempo (1 2 3 4) > subdivisão (e & a / tri let), conforme o compasso e as batidas por tempo configurados
+    const sub = Math.max(1, Math.min(4, sc.subdivision || 2)), SUBL = { 1: [''], 2: ['', '&'], 3: ['', 'tri', 'let'], 4: ['', 'e', '&', 'a'] }[sub], slot = 1 / sub;
+    for (let k = Math.floor((pos - behind) / slot); k <= Math.ceil((pos + VIS_BEATS + 1) / slot); k++) {
+      const abs = k * slot, x = X(abs), onBeat = Math.abs(abs - Math.round(abs)) < 1e-6, bi = ((Math.round(abs) % bpb) + bpb) % bpb, bar = onBeat && bi === 0;
+      c.strokeStyle = bar ? 'rgba(255,255,255,.22)' : onBeat ? 'rgba(255,255,255,.09)' : 'rgba(255,255,255,.045)'; c.lineWidth = bar ? 1.5 : 1;
+      if (!onBeat) c.setLineDash([2, 5]);
+      c.beginPath(); c.moveTo(x, TOP - 6); c.lineTo(x, H - BOTTOM); c.stroke(); c.setLineDash([]);
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (onBeat) { c.fillStyle = bar ? C['--accent'] : C['--tx-2']; c.font = `${bar ? 800 : 600} ${bar ? 13 : 11}px ui-rounded,system-ui`; c.fillText(String(bi + 1), x, TOP - 20); }
+      else { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.fillText(SUBL[Math.round((abs - Math.floor(abs)) * sub)] || '', x, TOP - 20); }
     }
     // acordes
     if (sc.chords?.length) {
