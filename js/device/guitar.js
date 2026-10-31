@@ -49,7 +49,6 @@ export class Guitar extends EventTarget {
     this.sustainMs = 2500;   // a AG01 não manda note-off; a vibração é estimada por este tempo
     this.pressed = new Map(); // corda -> casa segurada (CC 49/50 = nº da casa; sem sinal de "soltou")
     this.pressTimers = new Map();
-    this.fretOffset = 0;   // calibração: somado ao nº da casa dos sensores
     this.pressMs = 1200;
     this.decay = new Map();  // corda -> timeout do fim estimado da vibração
   }
@@ -130,8 +129,7 @@ export class Guitar extends EventTarget {
   // nesses CCs é inversa à das notas. PRESS_FAILSAFE_MS só cobre um "soltou" perdido pelo Bluetooth.
   press(ch, fret) {
     if (ch > 5) return;
-    ch = 5 - ch; fret += this.fretOffset || 0;
-    if (fret < 1) return;
+    ch = 5 - ch;
     clearTimeout(this.pressTimers.get(ch));
     const changed = this.pressed.get(ch) !== fret;
     this.pressed.set(ch, fret);
@@ -140,7 +138,7 @@ export class Guitar extends EventTarget {
   }
   release(ch, fret, force = false) {
     if (ch > 5) return;
-    ch = 5 - ch; if (!force) fret += this.fretOffset || 0;
+    ch = 5 - ch;
     const cur = this.pressed.get(ch);
     if (cur === undefined || (!force && fret !== cur)) return;   // "soltou" de uma casa antiga: o dedo já está em outra
     clearTimeout(this.pressTimers.get(ch)); this.pressTimers.delete(ch);

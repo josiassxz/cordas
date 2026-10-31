@@ -47,7 +47,7 @@ function mountUI(app, run, opts) {
       <div class="pr-state muted" aria-live="polite"></div>
     </div>
     ${notes.length ? `<div class="pr-notice"><span class="badge guide">guia</span><div>${notes.map(esc).join(' ')}</div></div>` : ''}
-    <div class="pr-calib" hidden><span>Calibre a guitarra antes de começar para o acerto ficar o mais preciso possível (timing, notas e casas).</span><button class="btn sm primary" data-calib>Calibrar agora</button><button class="btn ghost sm" data-calib-skip>Agora não</button></div>
+    <div class="pr-calib" hidden><span>Calibre o timing antes de começar: o app mede seu atraso e o acerto fica o mais preciso possível.</span><button class="btn sm primary" data-calib>Calibrar agora</button><button class="btn ghost sm" data-calib-skip>Agora não</button></div>
     <div class="pr-bar"></div>
     <div class="pr-hw"><canvas aria-label="Pista de notas e batidas"></canvas><button class="pr-full" data-full aria-label="Timeline em tela cheia (F)" title="Timeline em tela cheia (F)">⛶</button><div class="pr-flash" aria-live="polite"></div></div>
     <div class="pr-needle" aria-hidden="true"><span class="lbl l">cedo</span><span class="lbl r">tarde</span><div class="track"></div><div class="mid"></div><div class="needle"></div></div>
@@ -110,7 +110,7 @@ function mountUI(app, run, opts) {
     }),
     run.on('feedback', (f) => {
       counts.extra += f.type === 'extra' || f.type === 'avoid' ? 1 : 0; if (f.type === 'extra' || f.type === 'avoid') paintStats();
-      const off = app.store.get('settings.pitchOffset', 0), fret = clamp(fretOf(f.string, f.note, off), 0, 15);
+      const fret = clamp(fretOf(f.string, f.note, 0), 0, 22);
       if (f.type === 'wrongNeck') { app.stage?.flash(f.string, fret, 'bad'); setFlash(f.why?.text || 'Montagem diferente do pedido', 'bad'); }
       else if (f.type === 'hit' && f.tail) { /* resto da palhetada: já contou */ }
       else if (f.type === 'hit') app.stage?.flash(f.string, f.fret ?? fret, 'ok');
@@ -138,7 +138,7 @@ function mountUI(app, run, opts) {
   const onFullKey = (e) => { if (!host.isConnected || e.target.closest?.('input,select,textarea,dialog') || e.metaKey || e.ctrlKey) return; if (e.key === 'f' || e.key === 'F') toggleFull(); };
   document.addEventListener('keydown', onFullKey);
   host.addEventListener('click', (e) => {
-    if (e.target.closest('[data-calib]')) { document.dispatchEvent(new CustomEvent('corda:calibrate')); return; }
+    if (e.target.closest('[data-calib]')) { document.dispatchEvent(new CustomEvent('corda:sync')); return; }
     if (e.target.closest('[data-calib-skip]')) { sessionStorage.setItem('corda.calibSkip', '1'); paintCalib(); return; }
     if (e.target.closest('[data-full]')) { toggleFull(); return; }
     if (e.target.closest('[data-close]')) { opts.onClose?.(); return; }

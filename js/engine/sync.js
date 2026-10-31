@@ -51,7 +51,7 @@ export function openSync(app) {
     const cur = app.store.get('settings.latency', 0), want = Math.max(0, Math.min(400, Math.round(cur + m)));
     applyMs = want;
     if (m < -15) msg.innerHTML = `Você tocou em média <b>${Math.abs(Math.round(m))} ms adiantado</b> em relação ao clique. A compensação só corrige atraso, então não há o que ajustar: espere o clique.`;
-    else if (Math.abs(m) < 15) msg.innerHTML = `Seu tempo está <b>muito bem sincronizado</b> (${Math.round(m)} ms). Nada a ajustar.`;
+    else if (Math.abs(m) < 15) { app.store.set('settings.calibratedAt', Date.now()); msg.innerHTML = `Seu tempo está <b>muito bem sincronizado</b> (${Math.round(m)} ms). Nada a ajustar.`; }
     else { msg.innerHTML = `Você chega em média <b>${Math.round(m)} ms depois</b> do clique (Bluetooth + sua mão). Compensação atual <b>${cur} ms</b> → sugerida <b>${want} ms</b>.`; $('#syApply').hidden = false; }
   }
   function go() {

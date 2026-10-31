@@ -35,7 +35,7 @@ export default {
 
     const line = (t, txt) => { log.push({ t, txt }); if (log.length > 2000) log.shift(); const d = document.createElement('div'); d.textContent = `${(t / 1000).toFixed(3)}s  ${txt}`; $log.prepend(d); while ($log.childElementCount > 120) $log.lastChild.remove(); };
     const raw = (e) => line(e.detail.t, `RAW ${e.detail.hex}`);
-    const on = (e) => { const { string, note, vel, t } = e.detail; line(t, `corda ${string + 1} (${STRING_LABELS[string]}) ON  ${noteName(note)} (${note}) vel ${vel}  traste≈${fretOf(string, note, app.settings.pitchOffset)}`); strumBuf.push({ string, note }); };
+    const on = (e) => { const { string, note, vel, t } = e.detail; line(t, `corda ${string + 1} (${STRING_LABELS[string]}) ON  ${noteName(note)} (${note}) vel ${vel}  traste≈${fretOf(string, note, 0)}`); strumBuf.push({ string, note }); };
     const offE = (e) => line(e.detail.t, `corda ${e.detail.string + 1} OFF ${noteName(e.detail.note)}`);
     const cc = (e) => line(e.detail.t, `CC ${e.detail.controller} = ${e.detail.value}  (canal ${e.detail.string + 1})`);
     const strum = (e) => { lastStrum = strumBuf; strumBuf = []; renderMap(); };

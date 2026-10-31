@@ -66,10 +66,9 @@
       <small>O Bluetooth atrasa um pouco o sinal. O app sugere o valor depois de cada exercício.</small></label>
     <label class="field"><span class="row between">Desvio de afinação (semitons) <output id="offOut" class="num"></output></span>
       <input type="range" id="pitchOffset" min="-3" max="3" step="1">
-      <small>Se o braço mostra trastes errados (ex.: −1), calibre aqui ou em Laboratório.</small></label>
-    <div class="field"><span class="row between">Calibrar a guitarra</span>
-      <button type="button" class="btn primary" id="calBtn">Assistente de calibração (timing, notas, casas)…</button>
-      <button type="button" class="btn" id="syncBtn">Só medir meu atraso…</button>
+      <small>Só ajuda a conferir as NOTAS nos exercícios; não muda as casas mostradas no braço.</small></label>
+    <div class="field"><span class="row between">Calibrar o timing</span>
+      <button type="button" class="btn primary" id="syncBtn">Medir meu atraso…</button>
       <small>Toca um clique e mede quanto você chega depois dele; sugere a compensação de latência.</small></div>
     <label class="field"><span class="row between">Tamanho do braço <output id="stageOut" class="num"></output></span>
       <input type="range" id="stageScale" min="100" max="300" step="10">

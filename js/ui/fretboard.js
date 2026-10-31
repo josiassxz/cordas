@@ -106,7 +106,7 @@ export class Fretboard {
   noteOn(string, note, vel = 64) {
     this.noteOff(string, true);
     clearTimeout(this.fadeTimers.get(string));
-    const fret = fretOf(string, note, this.offset, this.tuning);
+    const fret = fretOf(string, note, 0, this.tuning);   // posição real: nenhum desvio/calibração mexe nas casas mostradas
     const onBoard = fret >= 0 && fret <= this.frets;
     const layer = onBoard ? this.layerLive : this.layerOff;
     const x = onBoard ? this.cellX(fret) : NUT - 22 - 4, y = this.rowY(string);
@@ -184,7 +184,7 @@ export class Fretboard {
     this.fadeTimers.forEach(clearTimeout); this.live.clear(); this.pressEls?.clear();
     this.frets = n; this.build(); this.setExpected(this.expected);
   }
-  setOffset(n) { this.offset = n; }
+  setOffset() { this.offset = 0; }   // mantido por compatibilidade: as casas mostradas não aceitam desvio
   destroy() { this.fadeTimers.forEach(clearTimeout); this.host.replaceChildren(); this.host.classList.remove('fretboard'); }
 }
 

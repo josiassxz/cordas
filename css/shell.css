@@ -43,3 +43,6 @@
   .nav button{flex-direction:column;gap:2px;font-size:10.5px;padding:6px 8px}
   .stage{grid-column:1;padding:8px 12px}.top,.view{padding-left:16px;padding-right:16px}.view{--vp:16px}
 }
+
+#calBadge{cursor:pointer;border:0}#calBadge[hidden]{display:none}
+.badge.warn{background:rgba(245,165,36,.18);color:var(--accent-2,#f5a524);text-transform:none;letter-spacing:0}
