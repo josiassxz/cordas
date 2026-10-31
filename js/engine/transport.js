@@ -46,9 +46,9 @@ export class Transport extends EventTarget {
 
   setState(s) { this.state = s; if (s === 'running') LIVE.add(this); else LIVE.delete(this); if (s === 'stopped') OPEN.delete(this); else OPEN.add(this); this.dispatchEvent(new CustomEvent('state', { detail: { state: s } })); }
 
-  start({ countInBeats = this.beatsPerBar, after = 0 } = {}) {
+  start({ countInBeats = this.beatsPerBar, after = 0, at = null } = {}) {
     Transport.pauseAll(this);   // só este relógio toca
-    this.pos0 = -countInBeats;
+    this.pos0 = at ?? -countInBeats;   // `at`: recomeça já nesta posição (recuperação do relógio)
     this.t0 = Math.max(this.now() + 0.12, Math.min(after || 0, this.now() + 1.6));   // `after`: mantém o pulso do clique anterior (sem 2º metrônomo fora de fase)
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
     this.makeBus();

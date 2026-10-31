@@ -158,3 +158,18 @@ test('score "esperar acerto" agora roda no relógio (BPM configurado) e aceita o
   at(2.5); hit(4); at(4.2); assert.equal(r.summary().miss, 0);
   assert.ok(r.position() > 2, 'o relógio anda');
 });
+
+test('se o relógio do exercício for perdido, continuar/atualizar recria o relógio na mesma posição (nunca fica congelado)', () => {
+  const { r, c, at } = rig(four, { opts: { countIn: 0 } });
+  r.start(); at(2.0);
+  const pos = r.position(); assert.ok(pos > 1.5);
+  r.pause(); r.transport.stop();                       // algo matou o relógio durante a pausa
+  assert.equal(r.state, 'paused');
+  r.resume();                                          // continuar tem que funcionar mesmo assim
+  assert.equal(r.state, 'running'); assert.equal(r.transport.state, 'running');
+  assert.ok(Math.abs(r.position() - pos) < 0.2, 'continua de onde parou');
+  c.t += 1; r.update(); assert.ok(r.position() > pos + 0.5, 'a timeline anda');
+  r.transport.stop();                                  // morte do relógio com o exercício "tocando"
+  c.t += 0.5; r.update();
+  assert.equal(r.transport.state, 'running', 'o laço principal recria o relógio parado');
+});

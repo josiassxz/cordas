@@ -83,13 +83,27 @@ export class Runner {
 
   pause() {
     if (this.finished || !['running', 'countin'].includes(this._state)) return;
-    this.update();
+    this.update(); this.lastKnownPos = this.position();
     this.transport?.pause(); Transport.pauseAll();   // regra única: pausar silencia TODO metrônomo
     this.prevState = this._state; this.setState('paused');
   }
+  // Se o estado do exercício diz "tocando/continuando" mas o relógio está parado/perdido (por qualquer motivo), recria o relógio
+  // na mesma posição e segue: o exercício nunca fica "rodando por fora e congelado por dentro".
+  healClock(resumeState) {
+    const t = this.transport, want = resumeState ?? this._state;
+    if (!t || !['running', 'countin'].includes(want) || t.state === 'running') return false;
+    const pos = Number.isFinite(this.lastKnownPos) ? this.lastKnownPos : (Number.isFinite(t.pos0) ? t.pos0 : 0), st = this.deps.settings();   // a posição vem do exercício: parar o relógio zera a dele
+    console.warn('[corda] relógio do exercício estava parado com o exercício ativo; recriando na posição', pos.toFixed(2));
+    const make = this.deps.makeTransport || ((o) => new Transport(this.deps.audio, o));
+    this.transport = make({ bpm: this.bpm, speed: this.speed, beatsPerBar: this.score.beatsPerBar, subdivision: this.score.subdivision, click: this.click, subClick: !!this.subClick, volume: this.clickVolume ?? 1, latencyMs: st.latency ?? 0, clock: this.deps.clock, silent: this.deps.silent });
+    this.transport.start({ countInBeats: 0, at: pos });
+    this.floor = pos; this.guideLast = pos; this.lastTick = performance.now();
+    return true;
+  }
   resume() {
     if (this._state !== 'paused') return;
-    this.transport?.resume();
+    if (this.transport && this.transport.state !== 'paused') { this.healClock('running'); }
+    else this.transport?.resume();
     this.lastTick = performance.now();
     if (this.transport) { this.floor = this.transport.pos0; this.guideLast = this.floor; }
     this.setState(this.prevState === 'countin' && this.position() < 0 ? 'countin' : 'running');
@@ -141,8 +155,9 @@ export class Runner {
     // Pausado = silêncio TOTAL: se algum outro relógio estiver tocando, é pausado na hora (e registrado no console para diagnóstico)
     if (this._state === 'paused' && Transport.liveCount) { console.warn('[corda] metrônomo extra vivo durante a pausa; pausando.', Transport.live()); Transport.pauseAll(); }
     if (this.finished || this.mode === 'wait' || !this.transport || !['running', 'countin'].includes(this._state)) return;
+    if (this.transport.state !== 'running') this.healClock();
     const now = performance.now(); this.activeMs += Math.min(100, now - this.lastTick); this.lastTick = now;
-    const pos = this.position(), len = this.score.lengthBeats;
+    const pos = this.position(), len = this.score.lengthBeats; this.lastKnownPos = pos;
     if (this._state === 'countin' && pos >= 0) this.setState('running');
     this.evaluator.setTempo(this.transport.effectiveBpm);
     if (pos >= 0) {
