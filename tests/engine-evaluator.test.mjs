@@ -255,3 +255,22 @@ test('janela de acerto: ±ms por andamento e tolerância; nunca passa de meia fa
   assert.ok(windowsMs(60, 1, 1.6).ok <= 60000 / 60 / 1 * 0.5, 'a janela ampla não invade a fatia vizinha');
   assert.ok(windowsMs(160, 4).ok < windowsMs(80, 4).ok, 'mais rápido, janela mais estreita');
 });
+
+test('palhetada REAL da AG01 (cordas chegam espaçadas até 0,66 s): todas as cordas são reconhecidas em vários andamentos e modos', async () => {
+  const { Evaluator } = await import('../js/engine/evaluator.js');
+  const { normalizeScore } = await import('../js/engine/score.js');
+  // espaçamentos entre cordas medidos nas capturas da guitarra (s): palhetada rápida, média e lenta
+  const REAL = { rapida: [0.05, 0.06, 0.07, 0.07, 0.05], media: [0.06, 0.09, 0.12, 0.15, 0.09], lenta: [0.15, 0.18, 0.12, 0.21, 0.12] };
+  const em = (bpm, sub, slots) => normalizeScore({ id: 'r' + bpm, title: 't', bpm, beatsPerBar: 4, subdivision: sub, lengthBeats: 4, events: slots.map((i) => ({ beat: i / sub, dur: 1 / sub, strum: { dir: 'D', strings: [0, 1, 2, 3, 4, 5], frets: [0, 2, 2, 0, 0, 0] } })) });
+  const cases = [[60, 1, [0, 1, 2, 3], 'lenta'], [80, 1, [0, 1, 2, 3], 'media'], [100, 1, [0, 1, 2, 3], 'media'], [120, 1, [0, 1, 2, 3], 'rapida'], [80, 2, [0, 2, 4, 6], 'media'], [80, 2, [0, 1, 2, 3, 4, 5, 6, 7], 'rapida'], [60, 2, [0, 1, 2, 3, 4, 5, 6, 7], 'rapida']];
+  for (const [bpm, sub, slots, kind] of cases) for (const mode of [{ sound: 'strings', neckOn: false }, { sound: 'off', neckOn: false }, { sound: 'chord', neckOn: false }]) {
+    const sc = em(bpm, sub, slots), e = new Evaluator(sc, { passes: 1, ...mode });
+    const bs = 60 / bpm, lateness = 0.03;            // você chega 30 ms depois da batida
+    sc.events.forEach((ev) => { let t = ev.beat * bs + lateness; [0, ...REAL[kind]].forEach((gap, i) => { t += gap; e.noteOn({ string: i, note: [40, 47, 52, 55, 59, 64][i], beat: t / bs }); }); });
+    const res = e.advance(100), label = `${bpm}bpm sub${sub} ${kind} ${mode.sound}`;
+    assert.equal(res.length, sc.events.length, label);
+    assert.ok(res.every((r) => r.grade !== 'miss'), `${label}: nenhuma palhetada perdida (${res.map((r) => r.grade).join(',')})`);
+    if (mode.sound === 'strings') assert.ok(res.every((r) => r.stringsOk === 6), `${label}: as 6 cordas reconhecidas (${res.map((r) => r.stringsOk).join(',')})`);
+    assert.equal(e.extras, 0, `${label}: sem notas "extras"`);
+  }
+});

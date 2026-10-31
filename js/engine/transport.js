@@ -34,9 +34,9 @@ export class Transport extends EventTarget {
 
   setState(s) { this.state = s; this.dispatchEvent(new CustomEvent('state', { detail: { state: s } })); }
 
-  start({ countInBeats = this.beatsPerBar } = {}) {
+  start({ countInBeats = this.beatsPerBar, after = 0 } = {}) {
     this.pos0 = -countInBeats;
-    this.t0 = this.now() + 0.12;
+    this.t0 = Math.max(this.now() + 0.12, Math.min(after || 0, this.now() + 1.6));   // `after`: mantém o pulso do clique anterior (sem 2º metrônomo fora de fase)
     this.nextTick = Math.ceil(this.pos0 * this.subdivision - 1e-9) / this.subdivision;
     this.makeBus();
     this.setState('running');
@@ -70,7 +70,14 @@ export class Transport extends EventTarget {
     this.setState('stopped');
   }
 
-  restart(opts) { this.stop(); this.start(opts); }
+  // Instante do próximo clique se o pulso continuasse (para reiniciar sem quebrar o compasso do metrônomo)
+  // = o primeiro clique de tempo que AINDA NÃO soou (ele é cancelado ao parar), senão o seguinte ao último que soou
+  continuation() {
+    if (!this.running || !this.lastBeatTime) return 0;
+    const now = this.now(), pending = (this.beatTimes || []).find((t) => t > now);
+    return pending ?? this.lastBeatTime + 60 / this.effectiveBpm;
+  }
+  restart(opts) { const after = this.continuation(); this.stop(); this.start({ ...opts, after }); }
 
   // Muda compasso/subdivisão sem parar: o próximo clique já segue a nova grade.
   setMeter({ beats, sub } = {}) {
@@ -104,6 +111,7 @@ export class Transport extends EventTarget {
       const isBeat = Math.abs(beat - Math.round(beat)) < 1e-9;
       const isBar = isBeat && ((Math.round(beat) % this.beatsPerBar) + this.beatsPerBar) % this.beatsPerBar === 0;
       this.dispatchEvent(new CustomEvent('tick', { detail: { beat, time, isBeat, isBar, countIn: beat < 0 } }));
+      if (isBeat) { this.lastBeatTime = time; (this.beatTimes ||= []).push(time); if (this.beatTimes.length > 8) this.beatTimes.shift(); }
       if (!this.silent && this.out) {
         if (this.click && isBeat) this.blip(time, isBar);
         else if (this.click && this.subClick) this.blip(time, false, true);

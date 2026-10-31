@@ -6,7 +6,7 @@ import { detectChord } from '../music/theory.js';
 export const MIDI_SERVICE = '03b80e5a-ede8-4b33-a751-6ce34ec4c700';
 export const MIDI_CHAR = '7772e5db-3868-4112-a1a9-f2669d106bf3';
 const PRESS_FAILSAFE_MS = 120000; // só se um "soltou" se perder no Bluetooth
-const STRUM_GAP_MS = 140; // silêncio que encerra uma palhetada
+const STRUM_GAP_MS = 260; // silêncio que encerra uma palhetada (na AG01 duas cordas seguidas chegam a 0,21 s uma da outra)
 
 // Pacote BLE MIDI: [header, (timestamp, status, dados...)*]. Timestamps e status têm o bit 7 ligado;
 // um byte >=0x80 seguido de outro >=0x80 é timestamp.

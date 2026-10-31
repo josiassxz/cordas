@@ -12,7 +12,9 @@ export function windowsMs(bpmEff, subdivision = 2, scale = 1) {
   // `ok` é a janela inteira de acerto (antes e depois da batida): é a METADE da largura do bloco na pista. Nunca passa de meia fatia.
   return { perfect: Math.min(55 * scale, slot * 0.15 * scale), good: Math.min(110 * scale, slot * 0.3 * scale), ok: Math.min(200 * scale, slot * 0.45 * scale, slot * 0.5) };
 }
-const SPREAD = { min: 150, max: 450 }; // cordas de uma palhetada chegam espalhadas no tempo
+// Na AG01 uma palhetada leva de ~0,3 a ~0,7 s para chegar (até 0,2 s entre duas cordas): a janela que junta as cordas de uma
+// palhetada vai até 100% do intervalo para o próximo evento, entre 330 ms e 900 ms.
+const SPREAD = { min: 330, max: 900, frac: 1 };
 const gradeOf = (aMs, w) => (aMs <= w.perfect ? 'perfect' : aMs <= w.good ? 'good' : 'ok');
 const capOk = (g) => (g === 'perfect' || g === 'good' ? 'ok' : g);
 
@@ -31,6 +33,7 @@ export class Evaluator {
     this.neck = o.neck || null;   // () => Map(corda -> casa apertada) | null (sem sensor)
     this.tuning = o.strings ?? STANDARD; this.bpm = o.bpm ?? score.bpm; this.sub = score.subdivision;
     this.events = score.events.map((ev, i) => ({ ev, i })).filter((x) => isScored(x.ev));
+    this.gapOf = new Map(this.events.map((x, k) => { const nx = this.events[(k + 1) % this.events.length].ev, g = nx.beat - x.ev.beat; return [x.ev, g > 1e-6 ? g : (this.len - x.ev.beat + this.events[0].ev.beat) || this.len]; }));
     this.states = new Map(); this.cursor = { p: 0, k: 0 }; this.pending = []; this.results = []; this.extras = 0; this.avoidHits = 0;
   }
 
@@ -38,7 +41,11 @@ export class Evaluator {
   get win() { return windowsMs(this.bpm, this.sub, this.tol); }
   toBeats(ms) { return ms * this.bpm / 60000; }
   // Eventos com várias cordas (palhetada ou notas simultâneas) chegam espalhados no tempo.
-  spreadB(ev) { return ev.kind === 'strum' || expectedStrings(ev).length > 1 ? this.toBeats(Math.min(SPREAD.max, Math.max(SPREAD.min, (60000 / this.bpm / this.sub) * 0.9))) : 0; }
+  spreadB(ev) {
+    if (!(ev.kind === 'strum' || expectedStrings(ev).length > 1)) return 0;
+    const gapMs = (this.gapOf.get(ev) ?? 4) * 60000 / this.bpm;   // tempo até o PRÓXIMO evento avaliado
+    return this.toBeats(Math.min(SPREAD.max, Math.max(SPREAD.min, gapMs * SPREAD.frac)));
+  }
   // Fim da janela de um evento: com tempo exigido, só a tolerância; sem tempo ("esperar acerto"), vale o trecho
   // inteiro do compasso/acorde (dur) — a linha do tempo anda no BPM configurado e o acerto pode vir a qualquer momento dele.
   endB(ev) { const okB = this.toBeats(this.win.ok); return ev.check.timing ? okB + this.spreadB(ev) : Math.max(okB + this.spreadB(ev), ev.dur || 0); }
@@ -60,19 +67,19 @@ export class Evaluator {
       for (let k = 0; k < this.events.length; k++) {
         const st = this.stateOf(p, k);
         // sem validar corda: as demais cordas da MESMA palhetada chegam depois da 1ª e não são "extras"
-        if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat - this.toBeats(20) && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40)) tail ||= st;
+        if (this.free && st.resolved && st.firstBeat != null && beat >= st.firstBeat - this.toBeats(20) && beat <= st.firstBeat + this.spreadB(st.ev) + this.toBeats(40) && beat - (st.lastNote ?? st.firstBeat) <= this.toBeats(260) && !st.order.includes(string)) tail ||= st;   // a MESMA corda de novo = palhetada nova   // continua a mesma palhetada: a corda seguinte chega até 260 ms depois da anterior
         if (st.resolved || beat < st.beat - okB || beat > st.beat + this.endB(st.ev)) continue;
-        if (this.free) { if (this.sound === 'chord' && st.firstBeat != null && beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60)) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
+        if (this.free) { if (this.sound === 'chord' && st.firstBeat != null && (beat > st.firstBeat + this.spreadB(st.ev) + this.toBeats(60) || st.heard?.some((h) => h.string === string))) continue; if (expectedStrings(st.ev).length && !st.matched.size) { const d = st.firstBeat != null ? 0 : Math.abs(beat - st.beat); if (d < bestDist) { best = st; bestDist = d; } } continue; }
         if (st.ev.avoid?.includes(string)) avoidSt ||= st;
         if (!expectedStrings(st.ev).includes(string)) { near = true; continue; }
         const m = st.matched.get(string);
         if (m?.ok) continue;
         if (st.firstBeat != null && expectedStrings(st.ev).length > 1 && beat > st.firstBeat + this.spreadB(st.ev)) continue;
-        const d = Math.abs(beat - (st.firstBeat ?? st.beat));
+        const d = st.firstBeat != null ? 0 : Math.abs(beat - st.beat);   // a palhetada já em andamento fica com as cordas que faltam
         if (d < bestDist) { best = st; bestDist = d; }
       }
     }
-    if (!best && tail) return [{ type: 'hit', string, note, key: tail.key, tail: true }];
+    if (tail) { tail.lastNote = beat; return [{ type: 'hit', string, note, key: tail.key, tail: true }]; }   // a palhetada em andamento tem prioridade sobre abrir a próxima
     if (!best) {
       if (avoidSt) { avoidSt.avoid++; this.avoidHits++; return [{ type: 'avoid', string, note, key: avoidSt.key }]; }
       this.extras++; return [{ type: 'extra', string, note, near }];
@@ -80,7 +87,7 @@ export class Evaluator {
     if (this.free) {   // sem validar corda a corda: a 1ª nota na janela define o tempo; o resto depende do modo
       const st = best, exp = expectedStrings(st.ev);
       if (st.firstBeat == null) st.firstBeat = beat;
-      st.order.push(string);
+      st.lastNote = beat; st.order.push(string);
       const nr = this.neckOn ? this.neckCheck(st.ev) : { ok: true };
       if (this.sound === 'chord') { st.neckRes ??= nr; (st.heard ||= []).push({ string, note }); return [{ type: 'hit', string, note, key: st.key }]; }   // avalia quando a palhetada terminar (advance)
       if (nr.ok) for (const x of exp) st.matched.set(x, { ok: true, note, beat });

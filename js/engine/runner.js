@@ -58,7 +58,7 @@ export class Runner {
       const make = this.deps.makeTransport || ((o) => new Transport(this.deps.audio, o));
       this.transport = make({ bpm: this.bpm, speed: this.speed, beatsPerBar: this.score.beatsPerBar, subdivision: this.score.subdivision, click: this.click, subClick: !!this.subClick, volume: this.clickVolume ?? 1, latencyMs: st.latency ?? 0, clock: this.deps.clock, silent: this.deps.silent });
       const countIn = this.opts.countIn ?? this.score.beatsPerBar;
-      this.transport.start({ countInBeats: countIn });
+      this.transport.start({ countInBeats: countIn, after: this._after || 0 }); this._after = 0;
       this.guideLast = -Infinity;
       this.setState(countIn > 0 ? 'countin' : 'running');
     }
@@ -95,7 +95,7 @@ export class Runner {
     this.setState(this.prevState === 'countin' && this.position() < 0 ? 'countin' : 'running');
   }
   toggle() { if (this._state === 'paused') this.resume(); else if (this._state === 'idle' || this._state === 'finished') this.start(); else this.pause(); }
-  restart() { const keep = { ...this.opts }; this.attach(false); this.opts = keep; this.start(); }
+  restart() { this._after = this.transport?.continuation?.() || 0; const keep = { ...this.opts }; this.attach(false); this.opts = keep; this.start(); }
   stop() { this.finish('stopped'); }
   destroy() { clearInterval(this.timer); this.attach(false); this.transport?.stop(); this.finished = true; this.listeners = {}; }
 
