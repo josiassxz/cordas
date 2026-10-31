@@ -3,6 +3,7 @@ import { esc, icon, paintIcons, clamp } from '../core/dom.js';
 import { Transport } from '../engine/transport.js';
 import { Lane } from '../engine/lane.js';
 import { pickChords } from '../ui/chord-picker.js';
+import { mountSemiTab } from './semitab.js';
 import { TIME_SIGNATURES, SUBDIVISIONS, STRUM_PATTERNS, PROGRESSIONS, shapeOf, allShapes, upgradeShapes, ensureShapes } from '../content/patterns.js';
 import { strumScore } from '../content/techniques.js';
 import { normalizeScore } from '../engine/score.js';
@@ -39,7 +40,7 @@ const TABS = [['metro', 'Metrônomo'], ['patterns', 'Padrões'], ['chords', 'Aco
 export default {
   id: 'rhythm', title: 'Ritmo', icon: 'wave', order: 40,
   mount(el, app, params) {
-    let tab = params.tab || 'metro', cleanup = null, run = null, bs = null;
+    let tab = params.tab || 'metro', cleanup = null, run = null, bs = null, bmode = params.bm || 'simple';
     const ps = [];
     const store = app.store;
     const savedPats = () => store.get('rhythm.custom', []);
@@ -179,8 +180,7 @@ export default {
     }
 
     // ================= Construtor de padrão por corda =================
-    function builder() {
-      const root = box();
+    function builderSimple(root) {
       const s = (bs ||= { sig: '4/4', sub: 2, chord: 'Em', bpm: 76, bars: 4, cells: null, name: '' });
       const slotsN = () => sigOf(s.sig).beats * s.sub;
       const reset = () => { const pat = slotsN() === 8 ? 'D-DU-UDU' : null; s.cells = Array.from({ length: slotsN() }, (_, i) => ({ dir: pat ? pat[i] : i % s.sub === 0 ? 'D' : '-', strings: [0, 1, 2, 3, 4, 5] })); };
@@ -242,6 +242,17 @@ export default {
       root.oninput = (e) => { if (e.target.id === 'bpm') { s.bpm = +e.target.value; root.querySelector('#bv').textContent = s.bpm; e.target.style.setProperty('--p', ((s.bpm - 40) / 100) * 100 + '%'); } };
       root.onchange = (e) => { if (e.target.id === 'chord') { s.chord = e.target.value; draw(); } if (e.target.id === 'pname') s.name = e.target.value; };
       return () => { root.onclick = root.oninput = root.onchange = null; };
+    }
+
+    // ================= Construtor: padrão simples (um acorde) ou semi-tablatura (vários acordes na timeline) =================
+    function builder() {
+      const outer = box();
+      outer.innerHTML = `<div class="seg bmode" role="tablist" aria-label="Tipo de construtor"><button data-bm="simple" aria-pressed="${bmode === 'simple'}">Padrão simples (um acorde)</button><button data-bm="semi" aria-pressed="${bmode === 'semi'}">Semi-tablatura (vários acordes)</button></div><div id="bbody"></div>`;
+      let inner = null;
+      const mount = () => { inner?.(); const body = outer.querySelector('#bbody'); inner = (bmode === 'semi' ? mountSemiTab(body, app, { launch }) : builderSimple(body)) || null; outer.querySelectorAll('[data-bm]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bm === bmode))); paintIcons(outer); };
+      outer.onclick = (e) => { const b = e.target.closest('[data-bm]'); if (b && b.dataset.bm !== bmode) { bmode = b.dataset.bm; mount(); } };
+      mount();
+      return () => { inner?.(); outer.onclick = null; };
     }
 
     // ================= Trilha de níveis =================
