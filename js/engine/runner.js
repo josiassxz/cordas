@@ -84,7 +84,7 @@ export class Runner {
   pause() {
     if (this.finished || !['running', 'countin'].includes(this._state)) return;
     this.update();
-    this.transport?.pause();
+    this.transport?.pause(); Transport.pauseAll();   // pausar silencia TODO metrônomo vivo, inclusive algum escondido
     this.prevState = this._state; this.setState('paused');
   }
   resume() {

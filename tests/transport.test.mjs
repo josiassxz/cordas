@@ -88,3 +88,13 @@ test('mudar o BPM cancela os cliques já agendados e recalcula o próximo no nov
   assert.ok(tr.nextTick <= before + 1, 'não pula batidas');
   tr.stop();
 });
+
+test('pausar/parar qualquer relógio silencia todos os metrônomos vivos', () => {
+  const mk = () => new Transport({ context: { currentTime: 0 }, master: {} }, { silent: true, clock: () => 0 });
+  const a = mk(), b = mk(), c = mk();
+  [a, b, c].forEach((t) => t.start({ countInBeats: 0 }));
+  assert.equal(Transport.liveCount, 3);
+  Transport.pauseAll(c); assert.equal(Transport.liveCount, 1); assert.equal(a.state, 'paused'); assert.equal(c.state, 'running');
+  Transport.stopAll(); assert.equal(Transport.liveCount, 0); assert.equal(c.state, 'stopped');
+  a.start({ countInBeats: 0 }); a.start({ countInBeats: 0 }); a.pause(); assert.equal(Transport.liveCount, 0, 'start repetido não deixa relógio órfão'); Transport.stopAll();
+});

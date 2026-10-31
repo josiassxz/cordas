@@ -3,6 +3,7 @@ import { $, $$, icon, paintIcons, toast } from './core/dom.js';
 import { Fretboard, bindGuitar } from './ui/fretboard.js';
 import { bindDiagramPress } from './ui/chord-diagram.js';
 import { openSync } from './engine/sync.js';
+import { Transport } from './engine/transport.js';
 import { openCalibration, isCalibrated } from './engine/calibrate.js';
 import { validationOf } from './engine/runner.js';
 import { INSTRUMENTS, STANDARD, detectChord, noteName, setFlats } from './music/theory.js';
@@ -17,7 +18,7 @@ export function startShell(app, views) {
   const parse = () => { const [id, q] = location.hash.replace(/^#\/?/, '').split('?'); return { id: byId.has(id) ? id : 'home', params: Object.fromEntries(new URLSearchParams(q || '')) }; };
   function render() {
     const { id, params } = parse();
-    cleanup?.(); cleanup = null; app.demoChord = null; app.practice?.stopAll?.();   // trocar de tela sempre encerra o exercício (e o metrônomo) em andamento
+    cleanup?.(); cleanup = null; app.demoChord = null; app.practice?.stopAll?.(); Transport.stopAll();   // trocar de tela sempre encerra o exercício (e o metrônomo) em andamento
     current = byId.get(id);
     $('#title').textContent = current.title;
     $$('#nav button').forEach((b) => { if (b.dataset.id === id) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
