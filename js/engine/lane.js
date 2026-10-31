@@ -28,8 +28,8 @@ export class Lane {
   // Chevron(s) de palhetada: ↓ = "v", ↑ = "^"; (x,y) = centro.
   chevron(x, y, dir, size, color, n = 2) {
     const c = this.ctx, d = dir === 'D' ? 1 : -1;
-    c.save(); c.translate(x, y); c.strokeStyle = color; c.lineWidth = Math.max(2.4, size * 0.22); c.lineCap = 'round'; c.lineJoin = 'round';
-    for (let i = 0; i < n; i++) { const oy = (i - (n - 1) / 2) * size * 0.62 * d; c.beginPath(); c.moveTo(-size * 0.5, -size * 0.22 * d + oy); c.lineTo(0, size * 0.22 * d + oy); c.lineTo(size * 0.5, -size * 0.22 * d + oy); c.stroke(); }
+    c.save(); c.translate(x, y); c.strokeStyle = color; c.lineWidth = Math.max(3, size * 0.2); c.lineCap = 'round'; c.lineJoin = 'round';
+    for (let i = 0; i < n; i++) { const oy = (i - (n - 1) / 2) * size * 0.62 * d; c.beginPath(); c.moveTo(-size * 0.5, -size * 0.24 * d + oy); c.lineTo(0, size * 0.24 * d + oy); c.lineTo(size * 0.5, -size * 0.24 * d + oy); c.stroke(); }
     c.restore();
   }
 
@@ -41,7 +41,7 @@ export class Lane {
     const sc = v.score, len = sc.lengthBeats, bpb = sc.beatsPerBar, sub = Math.max(1, Math.min(4, sc.subdivision || 2));
     const pos = v.pos, nowX = Math.round(Math.max(70, Math.min(150, W * 0.13))), ppb = (W - nowX - 18) / VIS_BEATS;
     const X = (abs) => nowX + (abs - pos) * ppb;
-    const top = 62, bottom = H - 14, rowH = (bottom - top) / 6, rowY = (s) => top + (5 - s) * rowH + rowH / 2;   // s=5 (corda 1, aguda) em cima
+    const top = 80, bottom = H - 12, rowH = (bottom - top) / 6, rowY = (s) => top + (5 - s) * rowH + rowH / 2;   // s=5 (corda 1, aguda) em cima
 
     // faixa de cima (contagem e mão) e linhas das cordas
     c.fillStyle = 'rgba(255,255,255,.035)'; c.fillRect(0, 0, W, 40);
@@ -67,18 +67,12 @@ export class Lane {
       if (onBeat) { c.fillStyle = bar ? C['--accent'] : C['--tx']; c.font = `${bar ? 800 : 700} ${bar ? 18 : 15}px ui-rounded,system-ui`; c.fillText(String(bi + 1), x, 14); }
       else { const j = Math.round((abs - Math.floor(abs)) * sub); c.fillStyle = C['--tx-3']; c.font = '600 12px ui-sans-serif,system-ui'; c.fillText(SUB_LABELS[sub]?.[j] || '', x, 14); }
       // seta fantasma da mão (↓ nos tempos, ↑ nos contratempos)
-      c.globalAlpha = faded * 0.3; this.chevron(x, 31, onBeat ? 'D' : 'U', onBeat ? 8 : 6, C['--tx-2'], 1); c.globalAlpha = 1;
+      c.globalAlpha = faded * 0.3; this.chevron(x, 31, onBeat ? 'D' : 'U', onBeat ? 10 : 8, C['--tx-2'], 1); c.globalAlpha = 1;
       if (bar && abs >= 0) { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.textAlign = 'left'; c.fillText(`c.${Math.floor(abs / bpb) + 1}`, x + 5, bottom + 4 - 0); }
     }
 
-    // acordes da progressão (nome grande acima das cordas)
-    if (sc.chords?.length) {
-      c.font = '800 16px ui-rounded,system-ui'; c.textAlign = 'left'; c.textBaseline = 'middle';
-      for (let p = Math.max(0, Math.floor((pos - TAIL_BEATS) / len)); p * len <= pos + VIS_BEATS && p < v.passes; p++) for (const ch of sc.chords) {
-        const x = X(p * len + ch.beat); if (x < 36 || x > W) continue;
-        c.fillStyle = x < nowX ? C['--tx-3'] : C['--tx']; c.fillText(ch.chordId, x + 4, 52);
-      }
-    }
+    // faixa de acordes: cada trecho vira uma barra com o nome; a TROCA é marcada por uma linha vertical colorida
+    if (sc.chords?.length) this.drawChords(sc, v, pos, X, nowX, top, bottom, W);
 
     // eventos (blocos)
     const p0 = Math.max(0, Math.floor((pos - TAIL_BEATS - 1) / len)), p1 = Math.floor((pos + VIS_BEATS + 1) / len);
@@ -104,13 +98,45 @@ export class Lane {
     if (v.state === 'paused') { c.fillStyle = 'rgba(10,11,15,.66)'; c.fillRect(0, 0, W, H); c.fillStyle = C['--tx']; c.font = '700 22px ui-rounded,system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('Pausado', W / 2, H / 2 - 8); c.fillStyle = C['--tx-2']; c.font = '14px ui-sans-serif'; c.fillText('Tempo, metrônomo e avaliação estão parados', W / 2, H / 2 + 18); }
   }
 
+  drawChords(sc, v, pos, X, nowX, top, bottom, W) {
+    const c = this.ctx, C = this.colors, len = sc.lengthBeats, passes = v.passes, y0 = 42, h = 28;
+    const segs = [];   // trechos [início, fim) em batidas absolutas, com o acorde
+    const first = Math.max(0, Math.floor((pos - 1) / len)), lastP = Math.min(passes - 1, Math.floor((pos + 6) / len) + 1);
+    for (let p = first; p <= lastP; p++) sc.chords.forEach((ch, k) => {
+      const start = p * len + ch.beat, next = sc.chords[k + 1] ? p * len + sc.chords[k + 1].beat : (p + 1) * len;
+      const prev = segs[segs.length - 1];
+      if (prev && prev.id === ch.chordId && Math.abs(prev.end - start) < 1e-6) prev.end = next;   // mesmo acorde seguido: um trecho só
+      else segs.push({ id: ch.chordId, start, end: next, change: !!prev || p * len + ch.beat > 0 });
+    });
+    c.textBaseline = 'middle'; c.textAlign = 'left';
+    segs.forEach((sg, idx) => {
+      const x0 = X(sg.start), x1 = X(sg.end); if (x1 < 36 || x0 > W) return;
+      const cur = pos >= sg.start - 1e-6 && pos < sg.end - 1e-6, soon = !cur && sg.start > pos && sg.start - pos <= 2 && v.state === 'running', prevSeg = segs[idx - 1];
+      const isChange = prevSeg && prevSeg.id !== sg.id;
+      const bx = Math.max(38, x0 + 3), bw = Math.max(0, x1 - 3 - bx); if (bw < 6) return;
+      const pulse = soon ? 0.5 + 0.5 * Math.sin(performance.now() / 110) : 0;
+      c.beginPath(); c.roundRect(bx, y0, bw, h, 9);
+      c.fillStyle = cur ? C['--accent'] : soon ? `rgba(245,165,36,${0.18 + 0.3 * pulse})` : 'rgba(255,255,255,.07)'; c.fill();
+      if (soon) { c.strokeStyle = C['--accent']; c.lineWidth = 2; c.stroke(); }
+      c.save(); c.beginPath(); c.rect(bx, y0, bw, h); c.clip();
+      c.fillStyle = cur ? '#1b1200' : soon ? C['--accent'] : C['--tx-2']; c.font = '800 17px ui-rounded,system-ui';
+      c.fillText((isChange && !cur ? (soon ? 'TROQUE → ' : '→ ') : '') + sg.id, bx + 10, y0 + h / 2 + 1);
+      c.restore();
+      // linha de troca: atravessa toda a pista no instante exato em que o acorde muda
+      if (isChange && x0 > 36 && x0 < W) {
+        c.strokeStyle = soon || cur ? C['--accent'] : 'rgba(245,165,36,.45)'; c.lineWidth = soon ? 3 : 2; c.setLineDash([6, 4]);
+        c.beginPath(); c.moveTo(x0, y0 + h); c.lineTo(x0, bottom + 4); c.stroke(); c.setLineDash([]);
+      }
+    });
+  }
+
   drawEvent(ev, x, rowY, rowH, ppb, res) {
     const c = this.ctx, C = this.colors, guide = !ev.check.strings && ev.kind !== 'rest';
     const strings = ev.kind === 'strum' ? ev.strum.strings : (ev.notes || []).map((n) => n.string);
     if (!strings.length) return;
     const lo = Math.min(...strings), hi = Math.max(...strings);
-    const w = Math.max(34, Math.min(ppb * Math.min(ev.dur || 0.5, 1) * 0.86, 78));
-    const y0 = rowY(hi) - rowH * 0.46 - 24, y1 = rowY(lo) + rowH * 0.46, bx = x - w / 2;
+    const w = Math.max(44, Math.min(ppb * Math.min(ev.dur || 0.5, 1) * 0.86, 84));
+    const y0 = Math.max(74, rowY(hi) - rowH * 0.46 - 28), y1 = rowY(lo) + rowH * 0.46, bx = x - w / 2;
     const okAll = res && res.grade !== 'miss';
     const base = res ? (res.grade === 'miss' ? ['#7a2f3a', '#a4414f'] : res.grade === 'ok' ? ['#c98a14', '#f1b43c'] : ['#2f9e6e', '#43d493']) : ['#c28a1c', '#f3c35a'];
     const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, base[1]); g.addColorStop(1, base[0]);
@@ -121,16 +147,7 @@ export class Lane {
     if (!guide) { const h = c.createLinearGradient(0, y0, 0, y0 + (y1 - y0) * 0.5); h.addColorStop(0, 'rgba(255,255,255,.28)'); h.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = h; c.beginPath(); c.roundRect(bx, y0, w, (y1 - y0) * 0.5, 7); c.fill(); }
     // seta da palhetada
     const dir = ev.kind === 'strum' ? ev.strum.dir : ev.pick;
-    if (dir) this.chevron(x, y0 + 17, dir, 12, guide ? C['--tx-2'] : '#fff6df', 2);
-    // número da casa escrito em cada corda tocada (sem bolinha); a cor do dedo vira um traço embaixo do número
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    strings.forEach((s) => {
-      const f = ev.kind === 'strum' ? ev.strum.frets?.[s] : ev.notes.find((n) => n.string === s)?.fret;
-      const fin = ev.kind === 'strum' ? ev.strum.fingers?.[s] : ev.notes.find((n) => n.string === s)?.finger;
-      const y = rowY(s), bad = res?.strings?.[s] && res.strings[s] !== 'ok';
-      if (f != null && !guide) { c.fillStyle = bad ? '#3b0d14' : '#2a1d00'; c.font = '800 14px ui-rounded,system-ui'; c.fillText(String(f), x, y + 0.5); }
-      if (fin && !guide) { c.fillStyle = C[`--f${fin}`]; c.beginPath(); c.roundRect(x - 8, y + 9, 16, 3, 2); c.fill(); }
-    });
+    if (dir) this.chevron(x, y0 + Math.min(34, (y1 - y0) * 0.36), dir, Math.min(w * 0.78, 30), guide ? C['--tx-2'] : '#fff6df', 2);
     if (ev.tech && TECH_LABEL[ev.tech]) { c.fillStyle = C['--tx-3']; c.font = '600 10px ui-sans-serif'; c.fillText(TECH_LABEL[ev.tech], x, y1 + 8); }
     (ev.avoid || []).forEach((s) => { const y = rowY(s); c.strokeStyle = C['--avoid']; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 6, y - 6); c.lineTo(x + 6, y + 6); c.moveTo(x + 6, y - 6); c.lineTo(x - 6, y + 6); c.stroke(); });
     void okAll;

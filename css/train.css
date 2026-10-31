@@ -42,13 +42,13 @@
 @media (max-width:900px){.tr-layout{grid-template-columns:1fr}.tr-techs{flex-direction:row;overflow-x:auto;position:static}.tr-techs button{white-space:nowrap}.pr-hw{height:240px}}
 
 /* pista vertical (setas descendo) */
-.pr-hw.lane{height:clamp(230px,34vh,320px);width:100%}
+.pr-hw.lane{height:clamp(270px,40vh,380px);width:100%}
 
 input.pr-bpmr[type=range]{width:130px;flex:none}
 
 /* sincronizar */
 #syncDlg{width:min(760px,94vw)}
-#syncDlg .pr-hw.lane{height:clamp(230px,34vh,320px);width:100%}
+#syncDlg .pr-hw.lane{height:clamp(270px,40vh,380px);width:100%}
 .sync-read{display:flex;gap:28px;margin:12px 0}.sync-read div{display:flex;flex-direction:column}.sync-read b{font-size:24px}.sync-read small{color:var(--tx-3)}
 
 .pr-transport{padding:10px 14px;row-gap:8px}
