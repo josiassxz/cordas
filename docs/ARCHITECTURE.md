@@ -138,6 +138,5 @@ Lógica musical em módulos puros (sem DOM) → testável com `node --test`. Tes
 
 ## 11. Verificação visual
 
-Conferência visual: abra a tela no Chrome (ou use o Chrome sem tela com `--screenshot`) e compare com o desenho esperado.
-tira screenshot headless de `http://127.0.0.1:8731/#/<view>` (servidor já rodando; se não, `./serve.sh &`).
-Interação em teste: iframe + `body.dispatchEvent(new KeyboardEvent(...))` (ver histórico) ou `app.guitar.simulateStrum` via `window.corda`.
+Conferência visual: com o servidor rodando (`./serve.sh`), abra `http://127.0.0.1:8731/#/<tela>` no Chrome, ou tire uma captura com o Chrome sem tela (`--headless=new --screenshot`).
+Interação em teste: `body.dispatchEvent(new KeyboardEvent(...))` ou `app.guitar.simulateStrum` via `window.corda`.
